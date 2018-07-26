@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 import os
 import time
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 import torch
 import torch.optim as optim
@@ -18,6 +18,10 @@ seq_len = Model.seq_len
 batch_size = 128
 width = 100
 validate_max_iteration = 200
+target_device='washingmachine'
+train_house_list=['house3']
+validate_house_list=['house3']
+inference_house = 'house3'
 
 
 def loss_func(output, target):
@@ -50,6 +54,9 @@ def evaluate(model, generator, data_type, max_iteration, cuda):
                                  generate_func=generate_func, 
                                  cuda=cuda, 
                                  has_target=True)
+
+    outputs = generator.inverse_transform(outputs)
+    targets = generator.inverse_transform(targets)
 
     mae = mean_absolute_error(outputs, targets)
     
@@ -123,9 +130,9 @@ def train(args):
     
     # Data generator
     generator = DataGenerator(hdf5_path=hdf5_path, 
-                              target_device='washingmachine', 
-                              train_house_list=['house1', 'house2'], 
-                              validate_house_list=['house3'], 
+                              target_device=target_device, 
+                              train_house_list=train_house_list, 
+                              validate_house_list=validate_house_list, 
                               batch_size=batch_size, 
                               seq_len=seq_len, 
                               width=width)
@@ -203,6 +210,46 @@ def train(args):
             
         iteration += 1
         
+def test(args):
+    
+    # Arguments & parameters
+    workspace = args.workspace
+    iteration = args.iteration
+    cuda = args.cuda
+    
+    # Paths
+    hdf5_path = os.path.join(workspace, 'data.h5')
+    model_path = os.path.join(workspace, 'models', get_filename(__file__), 'md_{}_iters.tar'.format(iteration))
+    
+    # Load model
+    model = Model()
+    checkpoint = torch.load(model_path)
+    model.load_state_dict(checkpoint['state_dict'])
+
+    if cuda:
+        model.cuda()
+        
+    # Data generator
+    generator = DataGenerator(hdf5_path=hdf5_path, 
+                              target_device=target_device, 
+                              train_house_list=train_house_list, 
+                              validate_house_list=validate_house_list, 
+                              batch_size=batch_size, 
+                              seq_len=seq_len, 
+                              width=width)
+                              
+    # Forward
+    inference_time = time.time()
+    
+    ts_mae = evaluate(model=model,
+		      generator=generator,
+		      data_type='validate',
+		      max_iteration=-1,
+		      cuda=cuda)
+    
+    print("Test time: {} s".format(time.time() - inference_time))
+    print("MAE: {}".format(ts_mae))
+
 
 def inference(args):
     
@@ -225,12 +272,12 @@ def inference(args):
         
     # Data generator
     generator = TestDataGenerator(hdf5_path=hdf5_path, 
-                                target_device='washingmachine', 
-                                train_house_list=['house1', 'house2'], 
+                                target_device=target_device, 
+                                train_house_list=train_house_list, 
                                 seq_len=seq_len, 
                                 steps=width * batch_size)
                               
-    generate_func = generator.generate_inference(house='house5')
+    generate_func = generator.generate_inference(house=inference_house)
     
     # Forward
     inference_time = time.time()
@@ -245,8 +292,10 @@ def inference(args):
     targets = generator.get_target()
     
     mae = mean_absolute_error(outputs, targets)
+    mae_allzero = mean_absolute_error(outputs*0, targets)
     
     print("MAE: {}".format(mae))
+    print("MAE all zero: {}".format(mae_allzero))
     
     
 
@@ -263,6 +312,11 @@ if __name__ == '__main__':
     parser_inference.add_argument('--iteration', type=int, required=True)
     parser_inference.add_argument('--cuda', action='store_true', default=False)
     
+    parser_inference = subparsers.add_parser('test')
+    parser_inference.add_argument('--workspace', type=str, required=True)
+    parser_inference.add_argument('--iteration', type=int, required=True)
+    parser_inference.add_argument('--cuda', action='store_true', default=False)
+
     args = parser.parse_args()
     
     # Write out log
@@ -273,6 +327,9 @@ if __name__ == '__main__':
     if args.mode == 'train':
         train(args)
         
+    elif args.mode == 'test':
+        test(args)
+
     elif args.mode == 'inference':
         inference(args)
         
