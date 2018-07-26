@@ -2,7 +2,7 @@ import numpy as np
 import h5py
 import time
 import logging
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 from utilities import calculate_scalar, scale, inverse_scale
 
@@ -54,12 +54,43 @@ class DataGenerator(object):
         # Training indexes
         self.train_indexes = np.arange(
             0, len(self.train_x) - seq_len - width + 2, 1)
+       
+        self.train_indexes = self.valid_data(self.train_x, self.train_y, self.train_indexes)
+
         
         # Validation indexes
         self.validate_indexes = np.arange(
             0, len(self.validate_x) - seq_len - width + 2, 1)
+
+        self.validate_indexes = self.valid_data(self.validate_x, self.validate_y, self.validate_indexes)
+
         
         logging.info("Number of indexes: {}".format(len(self.train_indexes)))
+
+
+    def valid_data(self, inputs, outputs, indexes):
+        """remove invalid records: aggregate is 0 or less than the total of individual appliances
+        """
+
+        length = len(indexes)
+
+        for i in range(length):
+
+            if inputs[i] < outputs[i]:
+
+                if i-self.seq_len//2<0:
+                    indexes[:i+self.seq_len//2] = -1
+
+                elif i+self.seq_len//2>length:
+                    indexes[i-self.seq_len//2:] = -1
+
+                else:
+                    indexes[i-self.seq_len//2:i+self.seq_len//2] = -1
+
+        valid_indexes = np.array([j for j in indexes if (j!=-1)])
+
+        return valid_indexes
+
             
             
     def read_data(self, hf, target_device, house_list):
@@ -124,7 +155,7 @@ class DataGenerator(object):
             
             yield batch_x, batch_y
             
-    def generate_validate(self, data_type, max_iteration):
+    def generate_validate(self, data_type, max_iteration, shuffle=True):
         """Generate mini-batch data for validation. 
         """
         
@@ -144,12 +175,13 @@ class DataGenerator(object):
         else:
             raise Exception("Incorrect data_type!")
             
-        self.random_state.shuffle(indexes)
+        if shuffle:
+            self.random_state.shuffle(indexes)
             
         iteration = 0
         pointer = 0
         
-        while True:
+        while pointer < len(indexes):
             
             # Reset pointer
             if iteration == max_iteration:
@@ -176,6 +208,10 @@ class DataGenerator(object):
             
     def transform(self, x):
         return scale(x, self.mean, self.std)
+
+    def inverse_transform(self, x):
+        return inverse_scale(x, self.mean, self.std)
+
         
         
 class TestDataGenerator(DataGenerator):
