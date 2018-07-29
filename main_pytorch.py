@@ -31,7 +31,7 @@ def loss_func(output, target):
     return torch.mean(torch.abs(output - target))
 
 
-def evaluate(model, generator, data_type, max_iteration, cuda):
+def evaluate(model, generator, data_type, max_iteration, cuda, shuffle=True):
     """Evaluate.
 
     Args:
@@ -47,7 +47,9 @@ def evaluate(model, generator, data_type, max_iteration, cuda):
 
     # Generate function
     generate_func = generator.generate_validate(data_type=data_type,
-                                                max_iteration=max_iteration)
+                                                max_iteration=max_iteration,
+                                                shuffle=shuffle
+                                                )
 
     # Forward
     (outputs, targets) = forward(model=model,
@@ -242,10 +244,11 @@ def test(args):
     inference_time = time.time()
 
     ts_mae = evaluate(model=model,
-		      generator=generator,
-		      data_type='validate',
-		      max_iteration=-1,
-		      cuda=cuda)
+                      generator=generator,
+                      data_type='validate',
+                      max_iteration=-1,
+                      cuda=cuda,
+                      shuffle=False)
 
     print("Test time: {} s".format(time.time() - inference_time))
     print("MAE: {}".format(ts_mae))
