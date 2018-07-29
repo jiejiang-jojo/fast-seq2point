@@ -10,8 +10,5 @@ WORKSPACE="$(pwd)"
 # Train
 python3 main_pytorch.py train --workspace=$WORKSPACE --cuda
 
-# Test
-#python3 main_pytorch.py test --workspace=$WORKSPACE --iteration=21000 --cuda
-
 # Inference
 #python3 main_pytorch.py inference --workspace=$WORKSPACE --iteration=21000 --cuda
