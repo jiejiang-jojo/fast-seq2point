@@ -15,13 +15,15 @@ from models import *
 
 Model = CNN3
 seq_len = Model.seq_len
+print('seq_len: ', seq_len)
 batch_size = 128
 width = 100
-validate_max_iteration = 200
+validate_max_iteration = 20000
 target_device='washingmachine'
-train_house_list=['house3']
-validate_house_list=['house3']
-inference_house = 'house3'
+train_house_list=['house1','house2','house3','house5','house6','house7','house8','house9','house10','house11','house13','house15','house16']
+validate_house_list=['house17','house18','house19','house20','house21']
+inference_house = 'house1'
+print('inference house: ', inference_house)
 
 
 def loss_func(output, target):
@@ -254,8 +256,8 @@ def inference(args):
 
     valid_data = np.ones_like(source)
     for i in range(len(source)):
-        if source[i] < targets[i]:
-            valid_data[max(i - seq_len // 2, 0):min(i + seq_len // 2, len(source))] = 0
+        if (source[i]==0) or (source[i] < targets[i]):
+            valid_data[i] = 0
 
     mae = mean_absolute_error(outputs * valid_data, targets * valid_data)
     mae_allzero = mean_absolute_error(outputs*0, targets * valid_data)

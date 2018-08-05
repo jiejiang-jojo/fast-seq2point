@@ -51,16 +51,18 @@ class DataGenerator(object):
         # Calculate scalar
         (self.mean, self.std) = calculate_scalar(self.train_x)
 
+        print('mean, std: ', self.mean, self.std)
+
         # Training indexes
         self.train_indexes = np.arange(
-            0, len(self.train_x) - seq_len - width + 2, 1)
+            0, len(self.train_x) - seq_len - width + 2, width)
 
         self.train_indexes = self.valid_data(self.train_x, self.train_y, self.train_indexes)
 
 
         # Validation indexes
         self.validate_indexes = np.arange(
-            0, len(self.validate_x) - seq_len - width + 2, 1)
+            0, len(self.validate_x) - seq_len - width + 2, width)
 
         self.validate_indexes = self.valid_data(self.validate_x, self.validate_y, self.validate_indexes)
 
@@ -72,18 +74,19 @@ class DataGenerator(object):
         """remove invalid records: aggregate is 0 or less than the total of individual appliances
         """
 
-        length = len(indexes)
+        full_indexes = np.arange(0, len(inputs) - self.seq_len - self.width + 2, 1)
+        length = len(full_indexes)
 
         for i in range(length):
 
             if inputs[i] < outputs[i]:
 
-                indexes[max(i - self.seq_len // 2, 0):min(i + self.seq_len // 2, length)] = -1
+                full_indexes[max(i - self.seq_len // 2, 0):min(i + self.seq_len // 2, length)] = -1
 
-        valid_indexes = np.array([j for j in indexes if (j!=-1)])
+        valid_indexes = np.array([j for j in indexes if (full_indexes[j]!=-1)])
+        print('propotion of valid indexes: ', 1.0*len(valid_indexes)/(np.finfo(float).eps+len(indexes)))
 
         return valid_indexes
-
 
 
     def read_data(self, hf, target_device, house_list):
