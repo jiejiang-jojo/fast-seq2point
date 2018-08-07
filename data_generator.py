@@ -29,6 +29,7 @@ class DataGenerator(object):
         self.seq_len = seq_len
         self.width = width
         self.random_state = np.random.RandomState(random_seed)
+        self.validate_random_state = np.random.RandomState(1)
         self.validate_house_list = validate_house_list
 
         assert len(train_house_list) > 0
@@ -172,7 +173,7 @@ class DataGenerator(object):
             raise Exception("Incorrect data_type!")
 
         if shuffle:
-            self.random_state.shuffle(indexes)
+            self.validate_random_state.shuffle(indexes)
 
         iteration = 0
         pointer = 0
