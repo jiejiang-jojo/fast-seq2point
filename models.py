@@ -243,7 +243,7 @@ class WaveNet2(nn.Module):
             block.init_weights()
 
     def forward(self, data_in):
-        data_in = torch.squeeze(data_in, -2)
+        data_in = data_in.squeeze(-2)
         data_out = self.causal_conv(data_in)
         skip_connections = []
         for block in self.blocks:
@@ -254,5 +254,5 @@ class WaveNet2(nn.Module):
             skip_out = skip_out + skip_other
         data_out = F.relu(skip_out)
         data_out = self.penultimate_conv(data_out)
-        data_out = self.final_conv(data_out)
-        return torch.unsqueeze(data_out, -1)
+        data_out = self.final_conv(data_out).unsqueeze(-1)
+        return data_out.narrow(1, WaveNet2.seq_len//2, data_out.size()[1]-WaveNet2.seq_len+1)
