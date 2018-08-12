@@ -221,7 +221,7 @@ class WaveNet2(nn.Module):
 
     layers = 6
     kernel_size = 3 # has to be odd integer, since even integer may break dilated conv output size
-    seq_len = (2 ** layers - 1) * (kernel_size - 1)
+    seq_len = (2 ** layers - 1) * (kernel_size - 1) + 1
     print('seq_len: ', seq_len)
 
     def __init__(self):
