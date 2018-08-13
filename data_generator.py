@@ -26,6 +26,7 @@ class DataGenerator(object):
 
         self.target_device = target_device
         self.batch_size = batch_size
+        assert seq_len % 2 == 1, "seq_len has to be odd, otherwise padding will be off by 1"
         self.seq_len = seq_len
         self.width = width
         self.random_state = np.random.RandomState(random_seed)
