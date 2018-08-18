@@ -1,4 +1,6 @@
+import sys
 import math
+import inspect
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -263,3 +265,7 @@ class WaveNet2(nn.Module):
         data_out = self.final_conv(data_out)
         data_out = data_out.narrow(-1, WaveNet2.seq_len//2, data_out.size()[-1]-WaveNet2.seq_len+1)
         return data_out.view(data_out.shape[0], data_out.shape[2])
+
+MODELS = {cname: cls
+          for cname, cls in inspect.getmembers(sys.modules[__name__], inspect.isclass)
+          if issubclass(cls, nn.Module)}
