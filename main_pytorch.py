@@ -113,6 +113,9 @@ def forward(model, generate_func, cuda, has_target):
 
 def train(args):
 
+    logging.info("sequence length: {}".format(seq_len))
+    logging.info("target_device: {}, train house: {}, validate house: {}, inference house: {}".format(target_device, train_house_list, validate_house_list, inference_house))
+
     # Arguments & parameters
     workspace = args.workspace
     cuda = args.cuda
