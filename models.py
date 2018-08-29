@@ -211,6 +211,7 @@ class DilatedResidualBlock(nn.Module):
         init_layer(self.mixing_conv)
 
     def forward(self, data_in):
+        
         out = self.dilated_conv(data_in)
         out1 = out.narrow(-2, 0, self.out_channels)
         out2 = out.narrow(-2, self.out_channels, self.out_channels)
@@ -266,6 +267,146 @@ class WaveNet2(nn.Module):
         data_out = data_out.narrow(-1, WaveNet2.seq_len//2, data_out.size()[-1]-WaveNet2.seq_len+1)
         return data_out.view(data_out.shape[0], data_out.shape[2])
 
+
+
+class BGRU(nn.Module):
+    
+    seq_len = 41
+    print('seq_len: ', seq_len)
+    
+    def __init__(self):
+        
+        super(BGRU, self).__init__()
+        
+        self.bgru = nn.GRU(input_size=1, hidden_size=64, num_layers=2, bias=True, batch_first=True, dropout=0., bidirectional=True)
+        
+        self.fc_final = nn.Linear(128, 1)
+
+        self.init_weights()
+        
+    def _init_param(self, param):
+        
+        if param.ndimension() == 1:
+            param.data.fill_(0.)
+            
+        elif param.ndimension() == 2:
+            n = param.size(-1)
+            std = math.sqrt(2. / n)
+            scale = std * math.sqrt(3.)
+            param.data.uniform_(-scale, scale)
+        
+    def init_weights(self):
+        
+        for param in self.bgru.parameters():
+            self._init_param(param)
+            
+        init_layer(self.fc_final)
+
+    def forward(self, input):
+        
+        x = input
+        x = x.view(x.shape[0], x.shape[1], 1)
+        '''(batch_size, time_steps, 1)'''
+        
+        (x, h) = self.bgru(x)
+        '''x: (batch_size, time_steps, feature_maps)'''
+        
+        x = self.fc_final(x)
+        '''(batch_size, time_steps, 1)'''
+        
+        x = x.view(x.shape[0 : 2])
+        '''(batch_size, time_steps)'''
+        
+        seq_len = BGRU.seq_len
+        width = x.shape[1] - seq_len + 1
+        output = x[:, seq_len // 2 : seq_len // 2 + width]
+        '''(batch_size, width)'''
+        
+        return output
+        
+
+class WaveNetBGRU(nn.Module):
+    
+    layers = 6
+    kernel_size = 3 # has to be odd integer, since even integer may break dilated conv output size
+    seq_len = (2 ** layers - 1) * (kernel_size - 1) + 1
+    print('seq_len: ', seq_len)
+
+    def __init__(self):
+        super(WaveNetBGRU, self).__init__()
+        channels = 32
+        skip_channels = 8
+
+        self.causal_conv = nn.Conv1d(1, channels, kernel_size=1, bias=False)
+        self.blocks = [DilatedResidualBlock(channels, skip_channels, WaveNetBGRU.kernel_size, 2**i, True)
+                       for i in range(WaveNetBGRU.layers)]
+        for i, block in enumerate(self.blocks):
+            self.add_module(f"dilatedConv{i}", block)
+        self.penultimate_conv = nn.Conv1d(skip_channels, 64, kernel_size=WaveNetBGRU.kernel_size, padding=(WaveNetBGRU.kernel_size-1)//2, bias=True)
+        self.final_conv = nn.Conv1d(64, 1, kernel_size=WaveNetBGRU.kernel_size, padding=(WaveNetBGRU.kernel_size-1)//2, bias=True)
+    
+        self.bgru = nn.GRU(input_size=64, hidden_size=64, num_layers=1, bias=True, batch_first=True, dropout=0., bidirectional=True)
+        
+        self.fc_final = nn.Linear(128, 1)
+        
+        self.init_weights()
+
+    def _init_param(self, param):
+        
+        if param.ndimension() == 1:
+            param.data.fill_(0.)
+            
+        elif param.ndimension() == 2:
+            n = param.size(-1)
+            std = math.sqrt(2. / n)
+            scale = std * math.sqrt(3.)
+            param.data.uniform_(-scale, scale)
+
+    def init_weights(self):
+        init_layer(self.causal_conv)
+        init_layer(self.penultimate_conv)
+        
+        for param in self.bgru.parameters():
+            self._init_param(param)
+            
+        init_layer(self.fc_final)
+        
+
+    def forward(self, data_in):
+        data_in = data_in.view(data_in.shape[0], 1, data_in.shape[1])
+        
+        data_out = self.causal_conv(data_in)
+        skip_connections = []
+        for block in self.blocks:
+            data_out, skip_out = block(data_out)
+            skip_connections.append(skip_out)
+        skip_out = skip_connections[0]
+        for skip_other in skip_connections[1:]:
+            skip_out = skip_out + skip_other
+        data_out = F.relu(skip_out)
+        data_out = self.penultimate_conv(data_out)
+        '''(batch_size, feature_maps, time_steps)'''
+        
+        data_out = data_out.transpose(1, 2)
+        '''(batch_size, time_steps, feature_maps)'''
+        
+        (data_out, h) = self.bgru(data_out)
+        
+        data_out = self.fc_final(data_out)
+        '''(batch_size, time_steps, 1)'''
+        
+        data_out = data_out.view(data_out.shape[0 : 2])
+        '''(batch_size, time_steps)'''
+        
+        seq_len = BGRU.seq_len
+        width = data_out.shape[1] - seq_len + 1
+        output = data_out[:, seq_len // 2 : seq_len // 2 + width]
+        '''(batch_size, width)'''
+    
+        return output
+        # return data_out.view(data_out.shape[0], data_out.shape[2])
+        
+        
 MODELS = {cname: cls
           for cname, cls in inspect.getmembers(sys.modules[__name__], inspect.isclass)
           if issubclass(cls, nn.Module)}
