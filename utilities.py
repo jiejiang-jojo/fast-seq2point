@@ -67,3 +67,8 @@ def inverse_scale(x, mean, std):
 def mean_absolute_error(output, target):
     
     return np.mean(np.abs(output - target))
+
+
+def signal_aggregate_error(output, target):
+
+    return np.abs(np.sum(output) - np.sum(target))/np.sum(target)

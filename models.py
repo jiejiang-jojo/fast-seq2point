@@ -95,18 +95,18 @@ class CNN3(nn.Module):
         
 class CNN7(nn.Module):
     
-    seq_len = 241
+    seq_len = 253
     
     def __init__(self):
         
         super(CNN7, self).__init__()
         
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=(41, 1), stride=(1, 1), padding=(0, 0), bias=True)
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(41, 1), stride=(1, 1), padding=(0, 0), bias=True)
-        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(41, 1), stride=(1, 1), padding=(0, 0), bias=True)
-        self.conv4 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=(41, 1), stride=(1, 1), padding=(0, 0), bias=True)
-        self.conv5 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=(41, 1), stride=(1, 1), padding=(0, 0), bias=True)
-        self.conv6 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=(41, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=(43, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(43, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(43, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv4 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=(43, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv5 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=(43, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv6 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=(43, 1), stride=(1, 1), padding=(0, 0), bias=True)
         
         self.conv_final = nn.Conv2d(in_channels=256, out_channels=1, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), bias=True)
 
