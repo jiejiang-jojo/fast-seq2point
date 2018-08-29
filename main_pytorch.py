@@ -2,29 +2,17 @@ import argparse
 import numpy as np
 import os
 import time
+import json
 #import matplotlib.pyplot as plt
 
 import torch
 import torch.optim as optim
 
 from utilities import (create_folder, get_filename, create_logging,
-                       mean_absolute_error)
+                       mean_absolute_error, signal_aggregate_error)
 from data_generator import DataGenerator, TestDataGenerator
 from models import move_data_to_gpu
 from models import *
-
-Model = CNN3
-seq_len = Model.seq_len
-print('seq_len: ', seq_len)
-batch_size = 128
-width = 100
-validate_max_iteration = 20000
-target_device='washingmachine'
-train_house_list=['house1','house2','house3','house5','house6','house7','house8','house9','house10','house11','house13','house15','house16']
-validate_house_list=['house17','house18','house19','house20','house21']
-inference_house = 'house1'
-print('inference house: ', inference_house)
-
 
 def loss_func(output, target):
 
@@ -113,12 +101,15 @@ def forward(model, generate_func, cuda, has_target):
 
 def train(args):
 
+    logging.info('config=%s', json.dumps(vars(args)))
+
     # Arguments & parameters
     workspace = args.workspace
     cuda = args.cuda
 
     # Model
-    model = Model()
+    model = MODELS[args.model]()
+    logging.info("sequence length: {}".format(model.seq_len))
 
     if cuda:
         model.cuda()
@@ -132,21 +123,24 @@ def train(args):
 
     # Data generator
     generator = DataGenerator(hdf5_path=hdf5_path,
-                              target_device=target_device,
-                              train_house_list=train_house_list,
-                              validate_house_list=validate_house_list,
-                              batch_size=batch_size,
-                              seq_len=seq_len,
-                              width=width)
+                              target_device=args.target_device,
+                              train_house_list=args.train_house_list,
+                              validate_house_list=args.validate_house_list,
+                              batch_size=args.batch_size,
+                              seq_len=model.seq_len,
+                              width=args.width)
 
     # Optimizer
-    optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999),
+    optimizer = optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.999),
                            eps=1e-08, weight_decay=0.)
 
     iteration = 0
     train_bgn_time = time.time()
 
     for (batch_x, batch_y) in generator.generate():
+
+        if iteration > 1000*100:
+           break
 
         # Evaluate
         if iteration % 1000 == 0:
@@ -156,13 +150,13 @@ def train(args):
             tr_mae = evaluate(model=model,
                               generator=generator,
                               data_type='train',
-                              max_iteration=validate_max_iteration,
+                              max_iteration=args.validate_max_iteration,
                               cuda=cuda)
 
             va_mae = evaluate(model=model,
                               generator=generator,
                               data_type='validate',
-                              max_iteration=validate_max_iteration,
+                              max_iteration=args.validate_max_iteration,
                               cuda=cuda)
 
             logging.info("tr_mae: {:.4f}, va_mae: {:.4f}".format(
@@ -197,13 +191,13 @@ def train(args):
         optimizer.step()
 
         # Save model
-        if iteration % 1000 == 0:
+        if iteration % 50000 == 0:
             save_out_dict = {'iteration': iteration,
                              'state_dict': model.state_dict(),
                              'optimizer': optimizer.state_dict()}
 
             save_out_path = os.path.join(models_dir,
-                                         'md_{}_iters.tar'.format(iteration))
+                                         args.target_device+args.model+args.inference_house+'_md_{}_iters.tar'.format(iteration))
 
             create_folder(os.path.dirname(save_out_path))
             torch.save(save_out_dict, save_out_path)
@@ -215,6 +209,7 @@ def train(args):
 
 def inference(args):
 
+    logging.info('config=%s', json.dumps(vars(args)))
     # Arguments & parameters
     workspace = args.workspace
     iteration = args.iteration
@@ -222,10 +217,11 @@ def inference(args):
 
     # Paths
     hdf5_path = os.path.join(workspace, 'data.h5')
-    model_path = os.path.join(workspace, 'models', get_filename(__file__), 'md_{}_iters.tar'.format(iteration))
+    #model_path = os.path.join(workspace, 'models', get_filename(__file__), args.model+args.inference_model+'_md_{}_iters.tar'.format(iteration))
+    model_path = os.path.join(workspace, 'models', get_filename(__file__), 'microwaveWaveNet2all_md_50000_iters.tar')
 
     # Load model
-    model = Model()
+    model = MODELS[args.model]()
     checkpoint = torch.load(model_path)
     model.load_state_dict(checkpoint['state_dict'])
 
@@ -234,12 +230,12 @@ def inference(args):
 
     # Data generator
     generator = TestDataGenerator(hdf5_path=hdf5_path,
-                                target_device=target_device,
-                                train_house_list=train_house_list,
-                                seq_len=seq_len,
-                                steps=width * batch_size)
+                                target_device=args.target_device,
+                                train_house_list=args.train_house_list,
+                                seq_len=model.seq_len,
+                                steps=args.width * args.batch_size)
 
-    generate_func = generator.generate_inference(house=inference_house)
+    generate_func = generator.generate_inference(house=args.inference_house)
 
     # Forward
     inference_time = time.time()
@@ -260,11 +256,17 @@ def inference(args):
             valid_data[i] = 0
 
     mae = mean_absolute_error(outputs * valid_data, targets * valid_data)
+    sae = signal_aggregate_error(outputs * valid_data, targets * valid_data)
     mae_allzero = mean_absolute_error(outputs*0, targets * valid_data)
+    sae_allmean = signal_aggregate_error(outputs*0+np.mean(targets), targets * valid_data)
 
     print("MAE: {}".format(mae))
     print("MAE all zero: {}".format(mae_allzero))
+    print("SAE: {}".format(sae))
+    print("SAE all mean: {}".format(sae_allmean))
 
+    np.save("prediction.npy", outputs)
+    np.save("groundtruth.npy", targets)
 
 
 if __name__ == '__main__':
@@ -273,14 +275,19 @@ if __name__ == '__main__':
 
     parser_train = subparsers.add_parser('train')
     parser_train.add_argument('--workspace', type=str, required=True)
+    parser_train.add_argument('--config', type=str, required=True)
     parser_train.add_argument('--cuda', action='store_true', default=False)
 
     parser_inference = subparsers.add_parser('inference')
     parser_inference.add_argument('--workspace', type=str, required=True)
+    parser_inference.add_argument('--config', type=str, required=True)
     parser_inference.add_argument('--iteration', type=int, required=True)
     parser_inference.add_argument('--cuda', action='store_true', default=False)
 
     args = parser.parse_args()
+    with open(args.config) as fin:
+        config = json.load(fin)
+        args.__dict__.update(config)
 
     # Write out log
     logs_dir = os.path.join(args.workspace, 'logs', get_filename(__file__))

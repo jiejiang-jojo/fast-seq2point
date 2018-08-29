@@ -1,4 +1,6 @@
+import sys
 import math
+import inspect
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -27,11 +29,15 @@ def move_data_to_gpu(x, cuda):
 
 def init_layer(layer):
     """Initialize a Linear or Convolutional layer. """
-    
+
     if layer.weight.ndimension() == 4:
         (n_out, n_in, height, width) = layer.weight.size()
         n = n_in * height * width
-        
+
+    elif layer.weight.ndimension() == 3:
+        (n_out, n_in, width) = layer.weight.size()
+        n = n_in * width
+
     elif layer.weight.ndimension() == 2:
         (n_out, n) = layer.weight.size()
 
@@ -89,18 +95,18 @@ class CNN3(nn.Module):
         
 class CNN7(nn.Module):
     
-    seq_len = 241
+    seq_len = 253
     
     def __init__(self):
         
         super(CNN7, self).__init__()
         
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=(41, 1), stride=(1, 1), padding=(0, 0), bias=True)
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(41, 1), stride=(1, 1), padding=(0, 0), bias=True)
-        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(41, 1), stride=(1, 1), padding=(0, 0), bias=True)
-        self.conv4 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=(41, 1), stride=(1, 1), padding=(0, 0), bias=True)
-        self.conv5 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=(41, 1), stride=(1, 1), padding=(0, 0), bias=True)
-        self.conv6 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=(41, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=(43, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(43, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(43, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv4 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=(43, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv5 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=(43, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv6 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=(43, 1), stride=(1, 1), padding=(0, 0), bias=True)
         
         self.conv_final = nn.Conv2d(in_channels=256, out_channels=1, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), bias=True)
 
@@ -187,5 +193,79 @@ class WaveNet(nn.Module):
         x = self.conv6(x)
 
         x = x.view(x.shape[0], x.shape[2])
-        
+
         return x
+
+
+class DilatedResidualBlock(nn.Module):
+    def __init__(self, out_channels, skip_channels, kernel_size, dilation, bias):
+        super(DilatedResidualBlock, self).__init__()
+        self.out_channels = out_channels
+        self.skip_channels = skip_channels
+        self.dilated_conv = nn.Conv1d(out_channels, 2 * out_channels, kernel_size=kernel_size, dilation=dilation, padding=dilation, bias=bias)
+        self.mixing_conv = nn.Conv1d(out_channels, out_channels + skip_channels, kernel_size=1, bias=False)
+        self.init_weights()
+
+    def init_weights(self):
+        init_layer(self.dilated_conv)
+        init_layer(self.mixing_conv)
+
+    def forward(self, data_in):
+        out = self.dilated_conv(data_in)
+        out1 = out.narrow(-2, 0, self.out_channels)
+        out2 = out.narrow(-2, self.out_channels, self.out_channels)
+        tanh_out = F.tanh(out1)
+        sigm_out = F.sigmoid(out2)
+        data = F.mul(tanh_out, sigm_out)
+        data = self.mixing_conv(data)
+        res = data.narrow(-2, 0, self.out_channels)
+        skip = data.narrow(-2, self.out_channels, self.skip_channels)
+        res = res + data_in
+        return res, skip
+
+
+class WaveNet2(nn.Module):
+
+    layers = 6
+    kernel_size = 3 # has to be odd integer, since even integer may break dilated conv output size
+    seq_len = (2 ** layers - 1) * (kernel_size - 1) + 1
+    print('seq_len: ', seq_len)
+
+    def __init__(self):
+        super(WaveNet2, self).__init__()
+        channels = 32
+        skip_channels = 8
+
+        self.causal_conv = nn.Conv1d(1, channels, kernel_size=1, bias=False)
+        self.blocks = [DilatedResidualBlock(channels, skip_channels, WaveNet2.kernel_size, 2**i, True)
+                       for i in range(WaveNet2.layers)]
+        for i, block in enumerate(self.blocks):
+            self.add_module(f"dilatedConv{i}", block)
+        self.penultimate_conv = nn.Conv1d(skip_channels, 64, kernel_size=WaveNet2.kernel_size, padding=(WaveNet2.kernel_size-1)//2, bias=True)
+        self.final_conv = nn.Conv1d(64, 1, kernel_size=WaveNet2.kernel_size, padding=(WaveNet2.kernel_size-1)//2, bias=True)
+        self.init_weights()
+
+    def init_weights(self):
+        init_layer(self.causal_conv)
+        init_layer(self.penultimate_conv)
+        init_layer(self.final_conv)
+
+    def forward(self, data_in):
+        data_in = data_in.view(data_in.shape[0], 1, data_in.shape[1])
+        data_out = self.causal_conv(data_in)
+        skip_connections = []
+        for block in self.blocks:
+            data_out, skip_out = block(data_out)
+            skip_connections.append(skip_out)
+        skip_out = skip_connections[0]
+        for skip_other in skip_connections[1:]:
+            skip_out = skip_out + skip_other
+        data_out = F.relu(skip_out)
+        data_out = self.penultimate_conv(data_out)
+        data_out = self.final_conv(data_out)
+        data_out = data_out.narrow(-1, WaveNet2.seq_len//2, data_out.size()[-1]-WaveNet2.seq_len+1)
+        return data_out.view(data_out.shape[0], data_out.shape[2])
+
+MODELS = {cname: cls
+          for cname, cls in inspect.getmembers(sys.modules[__name__], inspect.isclass)
+          if issubclass(cls, nn.Module)}
