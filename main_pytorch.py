@@ -9,7 +9,7 @@ import torch
 import torch.optim as optim
 
 from utilities import (create_folder, get_filename, create_logging,
-                       mean_absolute_error)
+                       mean_absolute_error, signal_aggregate_error)
 from data_generator import DataGenerator, TestDataGenerator
 from models import move_data_to_gpu
 from models import *
@@ -131,13 +131,16 @@ def train(args):
                               width=args.width)
 
     # Optimizer
-    optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999),
+    optimizer = optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.999),
                            eps=1e-08, weight_decay=0.)
 
     iteration = 0
     train_bgn_time = time.time()
 
     for (batch_x, batch_y) in generator.generate():
+
+        if iteration > 1000*100:
+           break
 
         # Evaluate
         if iteration % 1000 == 0:
@@ -188,13 +191,13 @@ def train(args):
         optimizer.step()
 
         # Save model
-        if iteration % 1000 == 0:
+        if iteration % 50000 == 0:
             save_out_dict = {'iteration': iteration,
                              'state_dict': model.state_dict(),
                              'optimizer': optimizer.state_dict()}
 
             save_out_path = os.path.join(models_dir,
-                                         'md_{}_iters.tar'.format(iteration))
+                                         args.target_device+args.model+args.inference_house+'_md_{}_iters.tar'.format(iteration))
 
             create_folder(os.path.dirname(save_out_path))
             torch.save(save_out_dict, save_out_path)
@@ -214,7 +217,8 @@ def inference(args):
 
     # Paths
     hdf5_path = os.path.join(workspace, 'data.h5')
-    model_path = os.path.join(workspace, 'models', get_filename(__file__), 'md_{}_iters.tar'.format(iteration))
+    #model_path = os.path.join(workspace, 'models', get_filename(__file__), args.model+args.inference_model+'_md_{}_iters.tar'.format(iteration))
+    model_path = os.path.join(workspace, 'models', get_filename(__file__), 'microwaveWaveNet2all_md_50000_iters.tar')
 
     # Load model
     model = MODELS[args.model]()
@@ -252,11 +256,17 @@ def inference(args):
             valid_data[i] = 0
 
     mae = mean_absolute_error(outputs * valid_data, targets * valid_data)
+    sae = signal_aggregate_error(outputs * valid_data, targets * valid_data)
     mae_allzero = mean_absolute_error(outputs*0, targets * valid_data)
+    sae_allmean = signal_aggregate_error(outputs*0+np.mean(targets), targets * valid_data)
 
     print("MAE: {}".format(mae))
     print("MAE all zero: {}".format(mae_allzero))
+    print("SAE: {}".format(sae))
+    print("SAE all mean: {}".format(sae_allmean))
 
+    np.save("prediction.npy", outputs)
+    np.save("groundtruth.npy", targets)
 
 
 if __name__ == '__main__':
