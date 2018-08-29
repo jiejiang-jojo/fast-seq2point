@@ -345,7 +345,7 @@ class WaveNetBGRU(nn.Module):
         self.penultimate_conv = nn.Conv1d(skip_channels, 64, kernel_size=WaveNetBGRU.kernel_size, padding=(WaveNetBGRU.kernel_size-1)//2, bias=True)
         self.final_conv = nn.Conv1d(64, 1, kernel_size=WaveNetBGRU.kernel_size, padding=(WaveNetBGRU.kernel_size-1)//2, bias=True)
     
-        self.bgru = nn.GRU(input_size=64, hidden_size=64, num_layers=1, bias=True, batch_first=True, dropout=0., bidirectional=True)
+        self.bgru = nn.GRU(input_size=64, hidden_size=64, num_layers=2, bias=True, batch_first=True, dropout=0., bidirectional=True)
         
         self.fc_final = nn.Linear(128, 1)
         
@@ -398,11 +398,11 @@ class WaveNetBGRU(nn.Module):
         data_out = data_out.view(data_out.shape[0 : 2])
         '''(batch_size, time_steps)'''
         
-        seq_len = BGRU.seq_len
+        seq_len = WaveNetBGRU.seq_len
         width = data_out.shape[1] - seq_len + 1
         output = data_out[:, seq_len // 2 : seq_len // 2 + width]
         '''(batch_size, width)'''
-    
+        
         return output
         # return data_out.view(data_out.shape[0], data_out.shape[2])
         
