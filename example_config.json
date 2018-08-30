@@ -1,6 +1,6 @@
 {
   "model": "WaveNet",
-  "model_param": {
+  "model_params": {
     "skip_channels": 32
   },
   "batch_size": 128,

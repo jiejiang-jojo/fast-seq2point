@@ -109,7 +109,7 @@ def train(args):
 
     # Model
     model_class, model_params = MODELS[args.model]
-    model = model_class(**{k: args.model_param[k] for k in model_params if k in args.model_param})
+    model = model_class(**{k: args.model_params[k] for k in model_params if k in args.model_params})
     logging.info("sequence length: {}".format(model.seq_len))
 
     if cuda:
@@ -224,7 +224,7 @@ def inference(args):
 
     # Load model
     model_class, model_params = MODELS[args.model]
-    model = model_class(**{k: args.model_param[k] for k in model_params if k in args.model_param})
+    model = model_class(**{k: args.model_params[k] for k in model_params if k in args.model_params})
     checkpoint = torch.load(model_path)
     model.load_state_dict(checkpoint['state_dict'])
 
