@@ -132,7 +132,8 @@ def train(args):
                               width=args.width)
 
     # Optimizer
-    optimizer = optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.999),
+    learning_rate = 1e-3
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, betas=(0.9, 0.999),
                            eps=1e-08, weight_decay=0.)
 
     iteration = 0
@@ -140,9 +141,9 @@ def train(args):
 
     for (batch_x, batch_y) in generator.generate():
 
-        if iteration > 1000*100:
+        if iteration > 1000*50:
            break
-
+        
         # Evaluate
         if iteration % 1000 == 0:
 
@@ -160,20 +161,25 @@ def train(args):
                               max_iteration=args.validate_max_iteration,
                               cuda=cuda)
 
-            logging.info("tr_mae: {:.4f}, va_mae: {:.4f}".format(
+            logging.info('tr_mae: {:.4f}, va_mae: {:.4f}'.format(
                 tr_mae, va_mae))
 
             train_time = train_fin_time - train_bgn_time
             validate_time = time.time() - train_fin_time
 
             logging.info(
-                "iteration: {}, train time: {:.3f} s, validate time: {:.3f} s".format(
+                'iteration: {}, train time: {:.3f} s, validate time: {:.3f} s'.format(
                     iteration, train_time, validate_time))
 
-            logging.info("------------------------------------")
+            logging.info('------------------------------------')
 
             train_bgn_time = time.time()
-
+        
+        # Reduce learning rate
+        if iteration % 1000 == 0 and iteration > 0 and learning_rate > 5e-5:
+            for param_group in optimizer.param_groups:
+                learning_rate *= 0.9
+                param_group['lr'] = learning_rate
 
         batch_x = move_data_to_gpu(batch_x, cuda)
         batch_y = move_data_to_gpu(batch_y, cuda)
@@ -203,8 +209,8 @@ def train(args):
             create_folder(os.path.dirname(save_out_path))
             torch.save(save_out_dict, save_out_path)
 
-            print("Save model to {}".format(save_out_path))
-
+            print('Save model to {}'.format(save_out_path))
+        
         iteration += 1
 
 
@@ -247,7 +253,7 @@ def inference(args):
     outputs = np.concatenate([output[0] for output in outputs])
     outputs = generator.inverse_transform(outputs)
 
-    print("Inference time: {} s".format(time.time() - inference_time))
+    print('Inference time: {} s'.format(time.time() - inference_time))
 
     # Calculate metrics
     source = generator.get_source()
@@ -263,13 +269,13 @@ def inference(args):
     mae_allzero = mean_absolute_error(outputs*0, targets * valid_data)
     sae_allmean = signal_aggregate_error(outputs*0+np.mean(targets), targets * valid_data)
 
-    print("MAE: {}".format(mae))
-    print("MAE all zero: {}".format(mae_allzero))
-    print("SAE: {}".format(sae))
-    print("SAE all mean: {}".format(sae_allmean))
+    print('MAE: {}'.format(mae))
+    print('MAE all zero: {}'.format(mae_allzero))
+    print('SAE: {}'.format(sae))
+    print('SAE all mean: {}'.format(sae_allmean))
 
-    np.save("prediction.npy", outputs)
-    np.save("groundtruth.npy", targets)
+    np.save('prediction.npy', outputs)
+    np.save('groundtruth.npy', targets)
 
 
 if __name__ == '__main__':
@@ -304,4 +310,4 @@ if __name__ == '__main__':
         inference(args)
 
     else:
-        raise Exception("Error!")
+        raise Exception('Error!')
