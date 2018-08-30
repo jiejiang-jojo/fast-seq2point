@@ -1,5 +1,8 @@
 {
-  "model": "CNN3",
+  "model": "WaveNet",
+  "model_param": {
+    "skip_channels": 32
+  },
   "batch_size": 128,
   "width": 100,
   "validate_max_iteration": 20000,

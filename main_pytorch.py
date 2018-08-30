@@ -108,7 +108,8 @@ def train(args):
     cuda = args.cuda
 
     # Model
-    model = MODELS[args.model]()
+    model_class, model_params = MODELS[args.model]
+    model = model_class(**{k: args.model_param[k] for k in model_params if k in args.model_param})
     logging.info("sequence length: {}".format(model.seq_len))
 
     if cuda:
@@ -217,11 +218,13 @@ def inference(args):
 
     # Paths
     hdf5_path = os.path.join(workspace, 'data.h5')
-    #model_path = os.path.join(workspace, 'models', get_filename(__file__), args.model+args.inference_model+'_md_{}_iters.tar'.format(iteration))
-    model_path = os.path.join(workspace, 'models', get_filename(__file__), 'microwaveWaveNet2all_md_50000_iters.tar')
+    model_path = os.path.join(workspace, 'models', get_filename(__file__),
+                              args.target_device+args.model+args.inference_house+'_md_{}_iters.tar'.format(iteration))
+    # model_path = os.path.join(workspace, 'models', get_filename(__file__), 'microwaveWaveNet2all_md_50000_iters.tar')
 
     # Load model
-    model = MODELS[args.model]()
+    model_class, model_params = MODELS[args.model]
+    model = model_class(**{k: args.model_param[k] for k in model_params if k in args.model_param})
     checkpoint = torch.load(model_path)
     model.load_state_dict(checkpoint['state_dict'])
 
