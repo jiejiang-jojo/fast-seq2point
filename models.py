@@ -140,6 +140,100 @@ class CNN7(nn.Module):
         return x
 
 
+class CNN5(nn.Module):
+
+    def __init__(self, seq_len=15):
+
+        super(CNN5, self).__init__()
+        self.seq_len = seq_len
+        assert (seq_len - 1) % 6 == 0, f'seq_len ({seq_len}) - 1 must be divisible by 6'
+        self.kernel_size = (seq_len - 3) // 4
+
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=(self.kernel_size, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(self.kernel_size, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(self.kernel_size, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv4 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=(self.kernel_size, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv5 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=(7, 1), stride=(1, 1), padding=(0, 0), bias=True)
+
+        self.conv_final = nn.Conv2d(in_channels=256, out_channels=1, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), bias=True)
+
+        self.init_weights()
+
+    def init_weights(self):
+
+        init_layer(self.conv1)
+        init_layer(self.conv2)
+        init_layer(self.conv3)
+        init_layer(self.conv4)
+        init_layer(self.conv5)
+        init_layer(self.conv_final)
+
+    def forward(self, input):
+
+        x = input
+        x = x.view(x.shape[0], 1, x.shape[1], 1)
+
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
+        x = F.relu(self.conv5(x))
+
+        x = self.conv_final(x)
+        x = x.view(x.shape[0], x.shape[2])
+
+        return x
+
+
+class Seq2Point(nn.Module):
+
+    def __init__(self, seq_len=15):
+
+        super(Seq2Point, self).__init__()
+        self.seq_len = seq_len
+        assert seq_len >= 10, f'seq_len ({seq_len}) must be at least 10'
+
+        self.pad1 = nn.ReplicationPad2d((0, 0, 4, 5))
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=30, kernel_size=(10, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.pad2 = nn.ReplicationPad2d((0, 0, 3, 4))
+        self.conv2 = nn.Conv2d(in_channels=30, out_channels=30, kernel_size=(8, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.pad3 = nn.ReplicationPad2d((0, 0, 2, 3))
+        self.conv3 = nn.Conv2d(in_channels=30, out_channels=40, kernel_size=(6, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.pad4 = nn.ReplicationPad2d((0, 0, 2, 2))
+        self.conv4 = nn.Conv2d(in_channels=40, out_channels=50, kernel_size=(5, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.pad5 = nn.ReplicationPad2d((0, 0, 2, 2))
+        self.conv5 = nn.Conv2d(in_channels=50, out_channels=50, kernel_size=(5, 1), stride=(1, 1), padding=(0, 0), bias=True)
+
+        self.conv_final = nn.Conv2d(in_channels=50, out_channels=1, kernel_size=(seq_len, 1), stride=(1, 1), padding=(0, 0), bias=True)
+
+        self.init_weights()
+
+    def init_weights(self):
+
+        init_layer(self.conv1)
+        init_layer(self.conv2)
+        init_layer(self.conv3)
+        init_layer(self.conv4)
+        init_layer(self.conv5)
+        init_layer(self.conv_final)
+
+    def forward(self, input):
+
+        x = input
+        x = x.view(x.shape[0], 1, x.shape[1], 1)
+
+        x = F.relu(self.conv1(self.pad1(x)))
+        x = F.relu(self.conv2(self.pad2(x)))
+        x = F.relu(self.conv3(self.pad3(x)))
+        x = F.relu(self.conv4(self.pad4(x)))
+        x = F.relu(self.conv5(self.pad5(x)))
+
+        x = self.conv_final(x)
+        x = x.view(x.shape[0], x.shape[2])
+
+        return x
+
+
 class DilatedResidualBlock(nn.Module):
     def __init__(self, residual_channels, dilation_channels, skip_channels, kernel_size, dilation, bias):
         super(DilatedResidualBlock, self).__init__()
