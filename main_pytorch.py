@@ -198,13 +198,13 @@ def train(args):
         optimizer.step()
 
         # Save model
-        if iteration % 50000 == 0:
+        if (iteration>1) and (iteration % 10000 == 0):
             save_out_dict = {'iteration': iteration,
                              'state_dict': model.state_dict(),
                              'optimizer': optimizer.state_dict()}
 
             save_out_path = os.path.join(models_dir,
-                                         args.target_device+args.model+args.inference_house+'_md_{}_iters.tar'.format(iteration))
+                                         args.target_device+'_'+args.model+'_'+str(args.model_params['layers'])+'_md_{}_iters.tar'.format(iteration))
 
             create_folder(os.path.dirname(save_out_path))
             torch.save(save_out_dict, save_out_path)
@@ -225,7 +225,7 @@ def inference(args):
     # Paths
     hdf5_path = os.path.join(workspace, 'data.h5')
     model_path = os.path.join(workspace, 'models', get_filename(__file__),
-                              args.target_device+args.model+args.inference_house+'_md_{}_iters.tar'.format(iteration))
+                              args.inference_model)
     # model_path = os.path.join(workspace, 'models', get_filename(__file__), 'microwaveWaveNet2all_md_50000_iters.tar')
 
     # Load model
@@ -274,8 +274,8 @@ def inference(args):
     print('SAE: {}'.format(sae))
     print('SAE all mean: {}'.format(sae_allmean))
 
-    np.save('prediction.npy', outputs)
-    np.save('groundtruth.npy', targets)
+    np.save(workspace+'outputs/'+args.inference_model+'_'+args.inference_house+'_'+'prediction.npy', outputs)
+    np.save(workspace+'outputs/'+args.inference_model+'_'+args.inference_house+'_'+'groundtruth.npy', targets)
 
 
 if __name__ == '__main__':
