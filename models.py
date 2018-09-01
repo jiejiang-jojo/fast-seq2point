@@ -146,7 +146,7 @@ class CNN5(nn.Module):
 
         super(CNN5, self).__init__()
         self.seq_len = seq_len
-        assert (seq_len - 1) % 6 == 0, f'seq_len ({seq_len}) - 1 must be divisible by 6'
+        assert (seq_len - 3) % 4 == 0, f'seq_len ({seq_len}) - 3 should be divisible by 4'
         self.kernel_size = (seq_len - 3) // 4
 
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=(self.kernel_size, 1), stride=(1, 1), padding=(0, 0), bias=True)
