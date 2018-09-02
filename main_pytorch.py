@@ -143,7 +143,7 @@ def train(args):
 
         if iteration > 1000*50:
            break
-        
+
         # Evaluate
         if iteration % 1000 == 0:
 
@@ -174,7 +174,7 @@ def train(args):
             logging.info('------------------------------------')
 
             train_bgn_time = time.time()
-        
+
         # Reduce learning rate
         if iteration % 1000 == 0 and iteration > 0 and learning_rate > 5e-5:
             for param_group in optimizer.param_groups:
@@ -210,7 +210,7 @@ def train(args):
             torch.save(save_out_dict, save_out_path)
 
             print('Save model to {}'.format(save_out_path))
-        
+
         iteration += 1
 
 
@@ -278,14 +278,40 @@ def inference(args):
     np.save(workspace+'outputs/'+args.inference_model+'_'+args.inference_house+'_'+'groundtruth.npy', targets)
 
 
+def consolidate_args(args):
+    """ Merge different source of configuration. """
+    # Loading config into args
+    with open(args.config) as fin:
+        config = json.load(fin)
+        args.__dict__.update(config)
+    # Loading commandline model parameters into model_params
+    model_param_setting = {k: v for k, v in args.__dict__.items() if k.startswith('pm_')}
+    if 'model_params' not in args.__dict__:
+        args.__dict__['model_params'] = {}
+    for k, v in model_param_setting.items():
+        args.__dict__.pop(k)
+        if v is not None:
+            try:
+                args.model_params[k[3:].replace('-', '_')] = int(v)
+            except:
+                args.model_params[k[3:]] = v
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     subparsers = parser.add_subparsers(dest='mode')
+
+    model_params = set()
+    for _, (_, mps) in MODELS.items():
+        for p in mps:
+            model_params.add(p)
 
     parser_train = subparsers.add_parser('train')
     parser_train.add_argument('--workspace', type=str, required=True)
     parser_train.add_argument('--config', type=str, required=True)
     parser_train.add_argument('--cuda', action='store_true', default=False)
+    for p in model_params:
+        parser_train.add_argument('--pm-' + p.replace('_', '-'), type=str, metavar='<{}>'.format(p))
 
     parser_inference = subparsers.add_parser('inference')
     parser_inference.add_argument('--workspace', type=str, required=True)
@@ -294,9 +320,7 @@ if __name__ == '__main__':
     parser_inference.add_argument('--cuda', action='store_true', default=False)
 
     args = parser.parse_args()
-    with open(args.config) as fin:
-        config = json.load(fin)
-        args.__dict__.update(config)
+    consolidate_args(args)
 
     # Write out log
     logs_dir = os.path.join(args.workspace, 'logs', get_filename(__file__))
@@ -304,6 +328,12 @@ if __name__ == '__main__':
     logging.info(args)
 
     if args.mode == 'train':
+        config_to_save = logging.getLoggerClass().root.handlers[0].baseFilename[:-4] + '.config.json'
+        logging.info('Saving config to ' + config_to_save)
+        ignores = set(['workspace', 'config', 'cuda', 'mode'])
+        with open(config_to_save, 'w') as fout:
+            json.dump({k: v for k, v in args.__dict__.items()
+                       if k not in ignores}, fout)
         train(args)
 
     elif args.mode == 'inference':
