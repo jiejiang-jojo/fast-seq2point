@@ -222,7 +222,6 @@ def inference(args):
     logging.info('config=%s', json.dumps(vars(args)))
     # Arguments & parameters
     workspace = args.workspace
-    iteration = args.iteration
     cuda = args.cuda
 
     # Paths
@@ -285,7 +284,8 @@ def consolidate_args(args):
     # Loading config into args
     with open(args.config) as fin:
         config = json.load(fin)
-        args.__dict__.update(config)
+        config.update(args.__dict__)
+        args.__dict__ = config
     # Loading commandline model parameters into model_params
     model_param_setting = {k: v for k, v in args.__dict__.items() if k.startswith('pm_')}
     if 'model_params' not in args.__dict__:
@@ -318,7 +318,7 @@ if __name__ == '__main__':
     parser_inference = subparsers.add_parser('inference')
     parser_inference.add_argument('--workspace', type=str, required=True)
     parser_inference.add_argument('--config', type=str, required=True)
-    parser_inference.add_argument('--iteration', type=int, required=True)
+    parser_inference.add_argument('--inference-model', type=str)
     parser_inference.add_argument('--cuda', action='store_true', default=False)
 
     args = parser.parse_args()
