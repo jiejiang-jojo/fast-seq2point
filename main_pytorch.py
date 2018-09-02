@@ -284,7 +284,7 @@ def consolidate_args(args):
     # Loading config into args
     with open(args.config) as fin:
         config = json.load(fin)
-        config.update(args.__dict__)
+        config.update({k: v for k, v in args.__dict__.items() if v is not None})
         args.__dict__ = config
     # Loading commandline model parameters into model_params
     model_param_setting = {k: v for k, v in args.__dict__.items() if k.startswith('pm_')}
@@ -319,6 +319,7 @@ if __name__ == '__main__':
     parser_inference.add_argument('--workspace', type=str, required=True)
     parser_inference.add_argument('--config', type=str, required=True)
     parser_inference.add_argument('--inference-model', type=str)
+    parser_inference.add_argument('--inference-house', type=str)
     parser_inference.add_argument('--cuda', action='store_true', default=False)
 
     args = parser.parse_args()
