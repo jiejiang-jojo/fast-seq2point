@@ -203,8 +203,11 @@ def train(args):
                              'state_dict': model.state_dict(),
                              'optimizer': optimizer.state_dict()}
 
-            save_out_path = os.path.join(models_dir,
-                                         args.target_device+'_'+args.model+'_'+str(args.model_params['layers'])+'_md_{}_iters.tar'.format(iteration))
+            save_out_path = args.basename + '_{}_{}_iter_{}.tar'.format(
+                args.target_device,
+                args.model,
+                iteration
+            )
 
             create_folder(os.path.dirname(save_out_path))
             torch.save(save_out_dict, save_out_path)
@@ -328,7 +331,8 @@ if __name__ == '__main__':
     logging.info(args)
 
     if args.mode == 'train':
-        config_to_save = logging.getLoggerClass().root.handlers[0].baseFilename[:-4] + '.config.json'
+        args.__dict__['basename'] = logging.getLoggerClass().root.handlers[0].baseFilename[:-4]
+        config_to_save = args.basename + '.config.json'
         logging.info('Saving config to ' + config_to_save)
         ignores = set(['workspace', 'config', 'cuda', 'mode'])
         with open(config_to_save, 'w') as fout:
