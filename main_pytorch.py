@@ -229,7 +229,6 @@ def inference(args):
     hdf5_path = os.path.join(workspace, 'data.h5')
     model_path = os.path.join(workspace, 'models', get_filename(__file__),
                               args.inference_model)
-    # model_path = os.path.join(workspace, 'models', get_filename(__file__), 'microwaveWaveNet2all_md_50000_iters.tar')
 
     # Load model
     model_class, model_params = MODELS[args.model]
@@ -256,7 +255,7 @@ def inference(args):
     outputs = np.concatenate([output[0] for output in outputs])
     outputs = generator.inverse_transform(outputs)
 
-    print('Inference time: {} s'.format(time.time() - inference_time))
+    logging.info('Inference time: {} s'.format(time.time() - inference_time))
 
     # Calculate metrics
     source = generator.get_source()
@@ -272,10 +271,10 @@ def inference(args):
     mae_allzero = mean_absolute_error(outputs*0, targets * valid_data)
     sae_allmean = signal_aggregate_error(outputs*0+np.mean(targets), targets * valid_data)
 
-    print('MAE: {}'.format(mae))
-    print('MAE all zero: {}'.format(mae_allzero))
-    print('SAE: {}'.format(sae))
-    print('SAE all mean: {}'.format(sae_allmean))
+    logging.info('MAE: {}'.format(mae))
+    logging.info('MAE all zero: {}'.format(mae_allzero))
+    logging.info('SAE: {}'.format(sae))
+    logging.info('SAE all mean: {}'.format(sae_allmean))
 
     np.save(workspace+'outputs/'+args.inference_model+'_'+args.inference_house+'_'+'prediction.npy', outputs)
     np.save(workspace+'outputs/'+args.inference_model+'_'+args.inference_house+'_'+'groundtruth.npy', targets)
