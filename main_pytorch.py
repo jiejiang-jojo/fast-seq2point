@@ -226,7 +226,7 @@ def inference(args):
 
     # Paths
     hdf5_path = os.path.join(workspace, 'data.h5')
-    model_path = os.path.join(workspace, 'models', get_filename(__file__),
+    model_path = os.path.join(workspace, 'logs', get_filename(__file__),
                               args.inference_model)
 
     # Load model
@@ -275,8 +275,8 @@ def inference(args):
     logging.info('SAE: {}'.format(sae))
     logging.info('SAE all mean: {}'.format(sae_allmean))
 
-    np.save(workspace+'outputs/'+args.inference_model+'_'+args.inference_house+'_'+'prediction.npy', outputs)
-    np.save(workspace+'outputs/'+args.inference_model+'_'+args.inference_house+'_'+'groundtruth.npy', targets)
+    np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'prediction.npy', outputs)
+    np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'groundtruth.npy', targets)
 
 
 def consolidate_args(args):
