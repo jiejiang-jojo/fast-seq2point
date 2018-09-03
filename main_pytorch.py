@@ -203,10 +203,11 @@ def train(args):
                              'state_dict': model.state_dict(),
                              'optimizer': optimizer.state_dict()}
 
-            save_out_path = args.basename + '_{}_{}_iter_{}.tar'.format(
+            save_out_path = args.basename + '_{}_{}_iter_{}_sl_{}.tar'.format(
                 args.target_device,
                 args.model,
-                iteration
+                iteration,
+                model.seq_len
             )
 
             create_folder(os.path.dirname(save_out_path))
@@ -321,6 +322,8 @@ if __name__ == '__main__':
     parser_inference.add_argument('--inference-model', type=str)
     parser_inference.add_argument('--inference-house', type=str)
     parser_inference.add_argument('--cuda', action='store_true', default=False)
+    for p in model_params:
+        parser_inference.add_argument('--pm-' + p.replace('_', '-'), type=str, metavar='<{}>'.format(p))
 
     args = parser.parse_args()
     consolidate_args(args)
