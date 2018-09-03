@@ -315,7 +315,7 @@ class BGRU(nn.Module):
 
         self.seq_len = seq_len
 
-        self.bgru = nn.GRU(input_size=1, hidden_size=64, num_layers=2, bias=True, batch_first=True, dropout=0., bidirectional=True)
+        self.bgru = nn.GRU(input_size=1, hidden_size=64, num_layers=3, bias=True, batch_first=True, dropout=0., bidirectional=True)
 
         self.fc_final = nn.Linear(128, 1)
 
