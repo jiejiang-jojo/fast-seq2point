@@ -203,10 +203,11 @@ def train(args):
                              'state_dict': model.state_dict(),
                              'optimizer': optimizer.state_dict()}
 
-            save_out_path = args.basename + '_{}_{}_iter_{}_sl_{}.tar'.format(
+            save_out_path = args.basename + '_{}_{}_iter_{}_wd_{}_sl_{}.tar'.format(
                 args.target_device,
                 args.model,
                 iteration,
+                args.width,
                 model.seq_len
             )
 
