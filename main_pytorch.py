@@ -181,21 +181,31 @@ def train(args):
                 learning_rate *= 0.9
                 param_group['lr'] = learning_rate
 
-        batch_x = move_data_to_gpu(batch_x, cuda)
-        batch_y = move_data_to_gpu(batch_y, cuda)
+        batch_x0 = batch_x
+        batch_y0 = batch_y
 
-        # Forward
-        forward_time = time.time()
-        model.train()
-        output = model(batch_x)
+        batch_x = move_data_to_gpu(batch_x0, cuda)
+        batch_y = move_data_to_gpu(batch_y0, cuda)
 
-        # Loss
-        loss = loss_func(output, batch_y)
-
-        # Backward
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        while(1):
+            t1 = time.time()
+            
+            
+    
+            # Forward
+            forward_time = time.time()
+            model.train()
+            output = model(batch_x)
+    
+            # Loss
+            loss = loss_func(output, batch_y)
+    
+            # Backward
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            
+            print(time.time() - t1)
 
         # Save model
         if (iteration>1) and (iteration % 10000 == 0):
