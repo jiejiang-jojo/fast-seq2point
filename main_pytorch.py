@@ -270,7 +270,7 @@ def inference(args):
     mae = mean_absolute_error(outputs * valid_data, targets * valid_data)
     sae = signal_aggregate_error(outputs * valid_data, targets * valid_data)
     mae_allzero = mean_absolute_error(outputs*0, targets * valid_data)
-    sae_allmean = signal_aggregate_error(outputs*0+np.mean(targets), targets * valid_data)
+    sae_allmean = signal_aggregate_error(outputs*0+18.278, targets * valid_data)
 
     logging.info('MAE: {}'.format(mae))
     logging.info('MAE all zero: {}'.format(mae_allzero))
@@ -314,6 +314,7 @@ if __name__ == '__main__':
     parser_train.add_argument('--workspace', type=str, required=True)
     parser_train.add_argument('--config', type=str, required=True)
     parser_train.add_argument('--cuda', action='store_true', default=False)
+    parser_train.add_argument('--width', type=int)
     for p in model_params:
         parser_train.add_argument('--pm-' + p.replace('_', '-'), type=str, metavar='<{}>'.format(p))
 

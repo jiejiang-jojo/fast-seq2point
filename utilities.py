@@ -74,8 +74,9 @@ def calculate_scalar(x):
 
     mean = np.mean(x, axis=axis)
     std = np.std(x, axis=axis)
+    max = np.max(x, axis=axis)
 
-    return mean, std
+    return mean, std, max
 
 
 def scale(x, mean, std):

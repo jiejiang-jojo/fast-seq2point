@@ -51,9 +51,11 @@ class DataGenerator(object):
         logging.info("Load data time: {} s".format(time.time() - load_time))
 
         # Calculate scalar
-        (self.mean, self.std) = calculate_scalar(self.train_x)
+        (self.mean, self.std, self.max) = calculate_scalar(self.train_x)
+        (self.meany, self.stdy, self.maxy) = calculate_scalar(self.train_y)
 
-        print('mean, std: ', self.mean, self.std)
+        print('mean, std, max: ', self.mean, self.std, self.max)
+        logging.info('mean {}, std {}, max{}:'.format(self.meany, self.stdy, self.maxy))
 
         # Training indexes
         self.train_indexes = np.arange(
