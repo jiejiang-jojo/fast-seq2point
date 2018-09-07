@@ -4,7 +4,7 @@
 # It should contain everything (including the executable path) but aruguments
 # which will be supplied by this script.
 
-if [ "$#" -ne 2 ]; then
+if [ "$#" -lt 3 ]; then
   echo 'condor_submit_train.sh <template> <config file> <conda env path> [--pm- ...]'
   exit
 fi
