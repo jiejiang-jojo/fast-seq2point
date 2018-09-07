@@ -27,4 +27,4 @@ export PATH="$CONDA_ENV_PATH/bin:$PATH"
 cd "$WORKSPACE"
 source activate $CONDA_ENV_NAME
 
-#$CONDA_ENV_PATH/$CONDA_ENV_NAME/bin/python3.6 main_pytorch.py train --config $CONFIG --workspace=$WORKSPACE --cuda $*
+$CONDA_ENV_PATH/$CONDA_ENV_NAME/bin/python3.6 main_pytorch.py train --config $CONFIG --workspace=$WORKSPACE --cuda $*
