@@ -12,7 +12,6 @@ class DataGenerator(object):
     def __init__(self, hdf5_path, target_device, train_house_list,
         validate_house_list, batch_size, seq_len, width, random_seed=1234):
         """Data generator.
-
         Args:
           hdf5_path: string, path of hdf5 file.
           target_device: string, e.g. 'washingmachine'
@@ -51,9 +50,11 @@ class DataGenerator(object):
         logging.info("Load data time: {} s".format(time.time() - load_time))
 
         # Calculate scalar
-        (self.mean, self.std) = calculate_scalar(self.train_x)
+        (self.mean, self.std, self.max) = calculate_scalar(self.train_x)
+        (self.meany, self.stdy, self.maxy) = calculate_scalar(self.train_y)
 
-        print('mean, std: ', self.mean, self.std)
+        print('mean, std, max: ', self.mean, self.std, self.max)
+        logging.info('mean {}, std {}, max{}:'.format(self.meany, self.stdy, self.maxy))
 
         # Training indexes
         self.train_indexes = np.arange(
@@ -216,7 +217,6 @@ class TestDataGenerator(DataGenerator):
 
     def __init__(self, hdf5_path, target_device, train_house_list, seq_len, steps):
         """Test data generator.
-
         Args:
           hdf5_path: string, path of hdf5 file.
           target_device: string, e.g. 'washingmachine'
