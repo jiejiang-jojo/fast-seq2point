@@ -23,14 +23,12 @@ def loss_func(output, target):
 
 def evaluate(model, generator, data_type, max_iteration, cuda):
     """Evaluate.
-
     Args:
       model: object.
       generator: object.
       data_type: 'train' | 'validate'.
       max_iteration: int, maximum iteration for validation
       cuda: bool.
-
     Returns:
       mae: float
     """
@@ -55,14 +53,12 @@ def evaluate(model, generator, data_type, max_iteration, cuda):
 
 def forward(model, generate_func, cuda, has_target):
     """Forward data to a model.
-
     Args:
       model: object
       generate_func: generate function
       cuda: bool
       has_target: bool, True if generate_func yield (batch_x, batch_y),
                         False if generate_func yield (batch_x)
-
     Returns:
       (outputs, targets) | outputs
     """
@@ -270,7 +266,7 @@ def inference(args):
     mae = mean_absolute_error(outputs * valid_data, targets * valid_data)
     sae = signal_aggregate_error(outputs * valid_data, targets * valid_data)
     mae_allzero = mean_absolute_error(outputs*0, targets * valid_data)
-    sae_allmean = signal_aggregate_error(outputs*0+np.mean(targets), targets * valid_data)
+    sae_allmean = signal_aggregate_error(outputs*0+18.278, targets * valid_data)
 
     logging.info('MAE: {}'.format(mae))
     logging.info('MAE all zero: {}'.format(mae_allzero))
@@ -314,6 +310,7 @@ if __name__ == '__main__':
     parser_train.add_argument('--workspace', type=str, required=True)
     parser_train.add_argument('--config', type=str, required=True)
     parser_train.add_argument('--cuda', action='store_true', default=False)
+    parser_train.add_argument('--width', type=int)
     for p in model_params:
         parser_train.add_argument('--pm-' + p.replace('_', '-'), type=str, metavar='<{}>'.format(p))
 
