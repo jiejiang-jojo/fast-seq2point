@@ -301,6 +301,7 @@ class WaveNet(nn.Module):
             skip_out = skip_out + skip_other
         data_out = F.relu(skip_out)
         data_out = self.penultimate_conv(data_out)
+        data_out = F.relu(data_out)
         data_out = self.final_conv(data_out)
         data_out = data_out.narrow(-1, self.seq_len//2, data_out.size()[-1]-self.seq_len+1)
         return data_out.view(data_out.shape[0], data_out.shape[2])
