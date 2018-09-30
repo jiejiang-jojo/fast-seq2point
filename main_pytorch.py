@@ -14,6 +14,8 @@ from data_generator import DataGenerator, TestDataGenerator
 from models import move_data_to_gpu
 from models import *
 
+#TODO Add binarized loss function and optimizer
+
 def loss_func(output, target):
 
     assert output.shape == target.shape

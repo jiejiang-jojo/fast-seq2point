@@ -59,11 +59,12 @@ def init_bn(bn):
 
 class CNN3(nn.Module):
 
-    def __init__(self, seq_len=41):
+    def __init__(self, seq_len=41, to_binary=False):
 
         super(CNN3, self).__init__()
         assert (seq_len - 1) % 2 == 0, f'seq_len ({seq_len}) must be odd'
         self.seq_len = seq_len
+        self.to_binary = to_binary
         self.kernel_size = (seq_len - 1) // 2 + 1
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=(self.kernel_size, 1), stride=(1, 1), padding=(0, 0), bias=True)
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(self.kernel_size, 1), stride=(1, 1), padding=(0, 0), bias=True)
@@ -88,16 +89,18 @@ class CNN3(nn.Module):
 
         x = self.conv_final(x)
         x = x.view(x.shape[0], x.shape[2])
-
+        if self.to_binary:
+            return torch.sigmoid(x)
         return x
 
 
 class CNN7(nn.Module):
 
-    def __init__(self, seq_len=253):
+    def __init__(self, seq_len=253, to_binary=False):
 
         super(CNN7, self).__init__()
         self.seq_len = seq_len
+        self.to_binary = to_binary
         assert (seq_len - 1) % 6 == 0, f'seq_len ({seq_len}) - 1 must be divisible by 6'
         self.kernel_size = (seq_len - 1) // 6 + 1
 
@@ -136,16 +139,19 @@ class CNN7(nn.Module):
 
         x = self.conv_final(x)
         x = x.view(x.shape[0], x.shape[2])
+        if self.to_binary:
+            return torch.sigmoid(x)
 
         return x
 
 
 class CNN5(nn.Module):
 
-    def __init__(self, seq_len=15):
+    def __init__(self, seq_len=15, to_binary=False):
 
         super(CNN5, self).__init__()
         self.seq_len = seq_len
+        self.to_binary = to_binary
         assert (seq_len - 3) % 4 == 0, f'seq_len ({seq_len}) - 3 should be divisible by 4'
         self.kernel_size = (seq_len - 3) // 4
 
@@ -181,16 +187,19 @@ class CNN5(nn.Module):
 
         x = self.conv_final(x)
         x = x.view(x.shape[0], x.shape[2])
+        if self.to_binary:
+            return torch.sigmoid(x)
 
         return x
 
 
 class Seq2Point(nn.Module):
 
-    def __init__(self, seq_len=15):
+    def __init__(self, seq_len=15, to_binary=False):
 
         super(Seq2Point, self).__init__()
         self.seq_len = seq_len
+        self.to_binary = to_binary
         assert seq_len >= 10, f'seq_len ({seq_len}) must be at least 10'
 
         self.pad1 = nn.ReplicationPad2d((0, 0, 4, 5))
@@ -230,6 +239,8 @@ class Seq2Point(nn.Module):
 
         x = self.conv_final(x)
         x = x.view(x.shape[0], x.shape[2])
+        if self.to_binary:
+            return torch.sigmoid(x)
 
         return x
 
@@ -265,10 +276,11 @@ class DilatedResidualBlock(nn.Module):
 
 class WaveNet(nn.Module):
 
-    def __init__(self, layers=6, kernel_size=3, residual_channels=32, dilation_channels=32, skip_channels=32):
+    def __init__(self, layers=6, kernel_size=3, residual_channels=32, dilation_channels=32, skip_channels=32, to_binary=False):
         super(WaveNet, self).__init__()
         assert kernel_size % 2 == 1, f'kernel_size ({kernel_size}) must be odd'
         self.kernel_size = kernel_size # has to be odd integer, since even integer may break dilated conv output size
+        self.to_binary = to_binary
         self.seq_len = (2 ** layers - 1) * (kernel_size - 1) + 1
 
         self.residual_channels = residual_channels
@@ -304,17 +316,22 @@ class WaveNet(nn.Module):
         data_out = F.relu(data_out)
         data_out = self.final_conv(data_out)
         data_out = data_out.narrow(-1, self.seq_len//2, data_out.size()[-1]-self.seq_len+1)
-        return data_out.view(data_out.shape[0], data_out.shape[2])
+        data_out = data_out.view(data_out.shape[0], data_out.shape[2])
+        if self.to_binary:
+            return torch.sigmoid(data_out)
+        return data_out
 
 
 
 class BGRU(nn.Module):
 
-    def __init__(self, seq_len=511):
+    def __init__(self, seq_len=511, to_binary=False):
 
         super(BGRU, self).__init__()
 
         self.seq_len = seq_len
+
+        self.to_binary = to_binary
 
         self.bgru = nn.GRU(input_size=1, hidden_size=64, num_layers=3, bias=True, batch_first=True, dropout=0., bidirectional=True)
 
@@ -359,6 +376,9 @@ class BGRU(nn.Module):
         width = x.shape[1] - seq_len + 1
         output = x[:, seq_len // 2 : seq_len // 2 + width]
         '''(batch_size, width)'''
+
+        if self.to_binary:
+            return torch.sigmoid(output)
 
         return output
 

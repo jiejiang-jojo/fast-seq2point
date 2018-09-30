@@ -10,7 +10,7 @@ from utilities import calculate_scalar, scale, inverse_scale
 class DataGenerator(object):
 
     def __init__(self, hdf5_path, target_device, train_house_list,
-        validate_house_list, batch_size, seq_len, width, random_seed=1234):
+        validate_house_list, batch_size, seq_len, width, random_seed=1234, binary_threshold=None):
         """Data generator.
         Args:
           hdf5_path: string, path of hdf5 file.
@@ -21,6 +21,7 @@ class DataGenerator(object):
           seq_len: int
           width: int
           random_seed: int
+          binary_threshold: None or float
         """
 
         self.target_device = target_device
@@ -31,6 +32,7 @@ class DataGenerator(object):
         self.random_state = np.random.RandomState(random_seed)
         self.validate_random_state = np.random.RandomState(1)
         self.validate_house_list = validate_house_list
+        self.binary_threshold = binary_threshold
 
         assert len(train_house_list) > 0
 
@@ -40,10 +42,12 @@ class DataGenerator(object):
         self.hf = h5py.File(hdf5_path, 'r')
 
         # Load training data
+        # NOTE read_data will return binarized data if binary_threshold is set to a float
         (self.train_x, self.train_y) = self.read_data(
             self.hf, target_device, train_house_list)
 
         # Load validation data
+        # NOTE read_data will return binarized data if binary_threshold is set to a float
         (self.validate_x, self.validate_y) = self.read_data(
             self.hf, target_device, validate_house_list)
 
@@ -114,6 +118,8 @@ class DataGenerator(object):
             aggregates = np.concatenate(aggregates, axis=0)
             targets = np.concatenate(targets, axis=0)
 
+            if self.binary_threshold is not None:
+                targets = ((targets - self.binary_threshold) > 0).astype('float')
             return aggregates, targets
 
     def generate(self):
@@ -215,7 +221,7 @@ class DataGenerator(object):
 
 class TestDataGenerator(DataGenerator):
 
-    def __init__(self, hdf5_path, target_device, train_house_list, seq_len, steps):
+    def __init__(self, hdf5_path, target_device, train_house_list, seq_len, steps, binary_threshold=None):
         """Test data generator.
         Args:
           hdf5_path: string, path of hdf5 file.
@@ -234,6 +240,7 @@ class TestDataGenerator(DataGenerator):
                                seq_len=seq_len,
                                width=1,     # dummy arg
                                random_seed=None, # dummy arg
+                               binary_threshold=binary_threshold
                                )
 
         self.steps = steps
