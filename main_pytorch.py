@@ -23,7 +23,21 @@ def loss_func(output, target):
     return torch.mean(torch.abs(output - target))
 
 
-def evaluate(model, generator, data_type, max_iteration, cuda):
+def loss_func_binary(output, target):
+
+    assert output.shape == target.shape
+
+    return F.binary_cross_entropy(output, target)
+
+
+def binarize(tensor):
+    return np.floor(tensor + 0.5)
+
+
+def accuracy(Y, Y_hat):
+    return (Y == Y_hat).sum() / Y.size
+
+def evaluate(model, generator, data_type, max_iteration, cuda, binary=False):
     """Evaluate.
     Args:
       model: object.
@@ -44,7 +58,8 @@ def evaluate(model, generator, data_type, max_iteration, cuda):
                                  generate_func=generate_func,
                                  cuda=cuda,
                                  has_target=True)
-
+    if binary:
+        return accuracy(targets, binarize(outputs))
     outputs = generator.inverse_transform(outputs)
     targets = generator.inverse_transform(targets)
 
@@ -127,7 +142,8 @@ def train(args):
                               validate_house_list=args.validate_house_list,
                               batch_size=args.batch_size,
                               seq_len=model.seq_len,
-                              width=args.width)
+                              width=args.width,
+                              binary_threshold=args.binary_threshold)
 
     # Optimizer
     learning_rate = 1e-3
@@ -147,20 +163,24 @@ def train(args):
 
             train_fin_time = time.time()
 
-            tr_mae = evaluate(model=model,
-                              generator=generator,
-                              data_type='train',
-                              max_iteration=args.validate_max_iteration,
-                              cuda=cuda)
+            tr_eval = evaluate(model=model,
+                               generator=generator,
+                               data_type='train',
+                               max_iteration=args.validate_max_iteration,
+                               cuda=cuda,
+                               binary=args.binary_threshold is not None)
 
-            va_mae = evaluate(model=model,
-                              generator=generator,
-                              data_type='validate',
-                              max_iteration=args.validate_max_iteration,
-                              cuda=cuda)
+            va_eval = evaluate(model=model,
+                               generator=generator,
+                               data_type='validate',
+                               max_iteration=args.validate_max_iteration,
+                               cuda=cuda,
+                               binary=args.binary_threshold is not None)
 
-            logging.info('tr_mae: {:.4f}, va_mae: {:.4f}'.format(
-                tr_mae, va_mae))
+            if args.binary_threshold is not None:
+                logging.info('tr_acc: {:.4f}, va_acc: {:.4f}'.format(tr_eval, va_eval))
+            else:
+                logging.info('tr_mae: {:.4f}, va_mae: {:.4f}'.format(tr_eval, va_eval))
 
             train_time = train_fin_time - train_bgn_time
             validate_time = time.time() - train_fin_time
@@ -188,7 +208,10 @@ def train(args):
         output = model(batch_x)
 
         # Loss
-        loss = loss_func(output, batch_y)
+        if args.binary_threshold is not None:
+            loss = loss_func_binary(output, batch_y)
+        else:
+            loss = loss_func(output, batch_y)
 
         # Backward
         optimizer.zero_grad()
@@ -240,10 +263,11 @@ def inference(args):
 
     # Data generator
     generator = TestDataGenerator(hdf5_path=hdf5_path,
-                                target_device=args.target_device,
-                                train_house_list=args.train_house_list,
-                                seq_len=model.seq_len,
-                                steps=args.width * args.batch_size)
+                                  target_device=args.target_device,
+                                  train_house_list=args.train_house_list,
+                                  seq_len=model.seq_len,
+                                  steps=args.width * args.batch_size,
+                                  binary_threshold=args.binary_threshold)
 
     generate_func = generator.generate_inference(house=args.inference_house)
 
@@ -252,28 +276,37 @@ def inference(args):
 
     outputs = forward(model=model, generate_func=generate_func, cuda=cuda, has_target=False)
     outputs = np.concatenate([output[0] for output in outputs])
-    outputs = generator.inverse_transform(outputs)
+    if args.binary_threshold is not None:
+        outputs = binarize(outputs)
+        targets = generator.get_target()
+        acc = accuracy(outputs, targets)
+        acc_all_zeros = accuracy(0, targets)
+        logging.info('Inference time: {} s'.format(time.time() - inference_time))
+        logging.info('ACC: {}'.format(acc))
+        logging.info('ACC all zero: {}'.format(acc_all_zeros))
+    else:
+        outputs = generator.inverse_transform(outputs)
 
-    logging.info('Inference time: {} s'.format(time.time() - inference_time))
+        logging.info('Inference time: {} s'.format(time.time() - inference_time))
 
-    # Calculate metrics
-    source = generator.get_source()
-    targets = generator.get_target()
+        # Calculate metrics
+        source = generator.get_source()
+        targets = generator.get_target()
 
-    valid_data = np.ones_like(source)
-    for i in range(len(source)):
-        if (source[i]==0) or (source[i] < targets[i]):
-            valid_data[i] = 0
+        valid_data = np.ones_like(source)
+        for i in range(len(source)):
+            if (source[i]==0) or (source[i] < targets[i]):
+                valid_data[i] = 0
 
-    mae = mean_absolute_error(outputs * valid_data, targets * valid_data)
-    sae = signal_aggregate_error(outputs * valid_data, targets * valid_data)
-    mae_allzero = mean_absolute_error(outputs*0, targets * valid_data)
-    sae_allmean = signal_aggregate_error(outputs*0+18.278, targets * valid_data)
+        mae = mean_absolute_error(outputs * valid_data, targets * valid_data)
+        sae = signal_aggregate_error(outputs * valid_data, targets * valid_data)
+        mae_allzero = mean_absolute_error(outputs*0, targets * valid_data)
+        sae_allmean = signal_aggregate_error(outputs*0+18.278, targets * valid_data)
 
-    logging.info('MAE: {}'.format(mae))
-    logging.info('MAE all zero: {}'.format(mae_allzero))
-    logging.info('SAE: {}'.format(sae))
-    logging.info('SAE all mean: {}'.format(sae_allmean))
+        logging.info('MAE: {}'.format(mae))
+        logging.info('MAE all zero: {}'.format(mae_allzero))
+        logging.info('SAE: {}'.format(sae))
+        logging.info('SAE all mean: {}'.format(sae_allmean))
 
     np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'prediction.npy', outputs)
     np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'groundtruth.npy', targets)
@@ -297,6 +330,8 @@ def consolidate_args(args):
                 args.model_params[k[3:].replace('-', '_')] = int(v)
             except:
                 args.model_params[k[3:]] = v
+    if args.binary_threshold is not None:
+        args.model_params['to_binary'] = True
 
 
 if __name__ == '__main__':
@@ -313,6 +348,7 @@ if __name__ == '__main__':
     parser_train.add_argument('--config', type=str, required=True)
     parser_train.add_argument('--cuda', action='store_true', default=False)
     parser_train.add_argument('--width', type=int)
+    parser_train.add_argument('--binary-threshold', type=float, default=None)
     for p in model_params:
         parser_train.add_argument('--pm-' + p.replace('_', '-'), type=str, metavar='<{}>'.format(p))
 
@@ -321,6 +357,7 @@ if __name__ == '__main__':
     parser_inference.add_argument('--config', type=str, required=True)
     parser_inference.add_argument('--inference-model', type=str)
     parser_inference.add_argument('--inference-house', type=str)
+    parser_inference.add_argument('--binary-threshold', type=float, default=None)
     parser_inference.add_argument('--cuda', action='store_true', default=False)
     for p in model_params:
         parser_inference.add_argument('--pm-' + p.replace('_', '-'), type=str, metavar='<{}>'.format(p))

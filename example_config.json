@@ -9,5 +9,6 @@
   "target_device": "washingmachine",
   "train_house_list": ["house2"],
   "validate_house_list": ["house2"],
-  "inference_house": "house2"
+  "inference_house": "house2",
+  "binary_threshold": 100
 }
