@@ -154,9 +154,10 @@ class DataGenerator(object):
             batch_x = self.train_x[batch_x_indexes_2d]
             batch_y = self.train_y[batch_y_indexes_2d]
 
-            # Transform
-            batch_x = self.transform(batch_x)
-            batch_y = self.transform(batch_y)
+            if self.binary_threshold is None:
+                # Transform
+                batch_x = self.transform(batch_x)
+                batch_y = self.transform(batch_y)
 
             yield batch_x, batch_y
 
@@ -204,9 +205,10 @@ class DataGenerator(object):
             batch_x = x[batch_x_indexes_2d]
             batch_y = y[batch_y_indexes_2d]
 
-            # Transform
-            batch_x = self.transform(batch_x)
-            batch_y = self.transform(batch_y)
+            if self.binary_threshold is None:
+                # Transform
+                batch_x = self.transform(batch_x)
+                batch_y = self.transform(batch_y)
 
             yield batch_x, batch_y
 
