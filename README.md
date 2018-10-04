@@ -1,1 +1,1 @@
-Energy disaggregation
+Energy disaggregation (Pytorch implementation)
