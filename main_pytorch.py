@@ -10,6 +10,7 @@ import torch.optim as optim
 
 from utilities import (create_folder, get_filename, create_logging,
                        mean_absolute_error, signal_aggregate_error)
+from utilities import *
 from data_generator import DataGenerator, TestDataGenerator
 from models import move_data_to_gpu
 from models import *
@@ -48,7 +49,7 @@ def evaluate(model, generator, data_type, max_iteration, cuda, binary=False):
     Returns:
       mae: float
     """
-
+    
     # Generate function
     generate_func = generator.generate_validate(data_type=data_type,
                                                 max_iteration=max_iteration)
@@ -59,13 +60,31 @@ def evaluate(model, generator, data_type, max_iteration, cuda, binary=False):
                                  cuda=cuda,
                                  has_target=True)
     if binary:
-        return accuracy(targets, binarize(outputs))
-    outputs = generator.inverse_transform(outputs)
-    targets = generator.inverse_transform(targets)
-
-    mae = mean_absolute_error(outputs, targets)
-
-    return mae
+        
+        (tp, fn, fp, tn) = tp_fn_fp_tn(binarize(outputs), targets, 0.5)
+        precision_value = precision(binarize(outputs), targets, 0.5)
+        recall_value = recall(binarize(outputs), targets, 0.5)
+        f1_score = f_value(precision_value, recall_value)
+        
+        auc = roc_auc(outputs, targets)
+        ap = average_precision(outputs, targets)
+        
+        result_dict = {'tp': tp, 'fn': fn, 'fp': fp, 'tn': tn, 
+                       'precision': '{:.4f}'.format(precision_value), 
+                       'recall': '{:.4f}'.format(recall_value), 
+                       'f1_score': '{:.4f}'.format(f1_score), 
+                       'auc': '{:.4f}'.format(auc), 
+                       'average_precision': '{:.4f}'.format(ap)}
+        
+        return result_dict
+    
+    else:
+        outputs = generator.inverse_transform(outputs)
+        targets = generator.inverse_transform(targets)
+    
+        mae = mean_absolute_error(outputs, targets)
+    
+        return mae
 
 
 def forward(model, generate_func, cuda, has_target):
@@ -157,20 +176,20 @@ def train(args):
 
         if iteration > 1000*50:
            break
-
+        
         # Evaluate
         if iteration % 1000 == 0:
 
             train_fin_time = time.time()
 
-            tr_eval = evaluate(model=model,
+            tr_result_dict = evaluate(model=model,
                                generator=generator,
                                data_type='train',
                                max_iteration=args.validate_max_iteration,
                                cuda=cuda,
                                binary=args.binary_threshold is not None)
 
-            va_eval = evaluate(model=model,
+            va_result_dict = evaluate(model=model,
                                generator=generator,
                                data_type='validate',
                                max_iteration=args.validate_max_iteration,
@@ -178,9 +197,11 @@ def train(args):
                                binary=args.binary_threshold is not None)
 
             if args.binary_threshold is not None:
-                logging.info('tr_acc: {:.4f}, va_acc: {:.4f}'.format(tr_eval, va_eval))
+                # logging.info('tr_acc: {:.4f}, va_acc: {:.4f}'.format(tr_eval, va_eval))
+                logging.info('train: {}'.format(tr_result_dict))
             else:
-                logging.info('tr_mae: {:.4f}, va_mae: {:.4f}'.format(tr_eval, va_eval))
+                # logging.info('tr_mae: {:.4f}, va_mae: {:.4f}'.format(tr_eval, va_eval))
+                logging.info('validate: {}'.format(va_result_dict))
 
             train_time = train_fin_time - train_bgn_time
             validate_time = time.time() - train_fin_time
