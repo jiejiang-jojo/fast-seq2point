@@ -280,7 +280,7 @@ def inference(args):
         outputs = binarize(outputs)
         targets = generator.get_target()
         acc = accuracy(outputs, targets)
-        acc_all_zeros = accuracy(0, targets)
+        acc_all_zeros = accuracy(outputs*0, targets)
         logging.info('Inference time: {} s'.format(time.time() - inference_time))
         logging.info('ACC: {}'.format(acc))
         logging.info('ACC all zero: {}'.format(acc_all_zeros))

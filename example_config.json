@@ -5,10 +5,10 @@
   },
   "batch_size": 128,
   "width": 100,
-  "validate_max_iteration": 20000,
+  "validate_max_iteration": 2000,
   "target_device": "washingmachine",
   "train_house_list": ["house2"],
   "validate_house_list": ["house2"],
   "inference_house": "house2",
-  "binary_threshold": 100
+  "binary_threshold": 20
 }
