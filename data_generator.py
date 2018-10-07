@@ -4,7 +4,7 @@ import time
 import logging
 #import matplotlib.pyplot as plt
 
-from utilities import calculate_scalar, scale, inverse_scale
+from utilities import calculate_scalar, scale, inverse_scale, binarize
 
 
 class DataGenerator(object):
@@ -118,8 +118,6 @@ class DataGenerator(object):
             aggregates = np.concatenate(aggregates, axis=0)
             targets = np.concatenate(targets, axis=0)
 
-            if self.binary_threshold is not None:
-                targets = ((targets - self.binary_threshold) > 0).astype('float')
             return aggregates, targets
 
     def generate(self):
@@ -154,9 +152,11 @@ class DataGenerator(object):
             batch_x = self.train_x[batch_x_indexes_2d]
             batch_y = self.train_y[batch_y_indexes_2d]
 
-            if self.binary_threshold is None:
-                # Transform
-                batch_x = self.transform(batch_x)
+            # Normalize input
+            batch_x = self.transform(batch_x)
+            if self.binary_threshold is not None:
+                batch_y = binarize(batch_y, self.binary_threshold)
+            else:
                 batch_y = self.transform(batch_y)
 
             yield batch_x, batch_y
@@ -205,9 +205,11 @@ class DataGenerator(object):
             batch_x = x[batch_x_indexes_2d]
             batch_y = y[batch_y_indexes_2d]
 
-            if self.binary_threshold is None:
-                # Transform
-                batch_x = self.transform(batch_x)
+            # Normalize input
+            batch_x = self.transform(batch_x)
+            if self.binary_threshold is not None:
+                batch_y = binarize(batch_y, self.binary_threshold)
+            else:
                 batch_y = self.transform(batch_y)
 
             yield batch_x, batch_y
@@ -278,6 +280,8 @@ class TestDataGenerator(DataGenerator):
         return np.concatenate((np.zeros(pad_num), x, np.zeros(pad_num)))
 
     def get_target(self):
+        if self.binary_threshold is not None:
+            return binarize(self.target, self.binary_threshold)
         return self.target
 
     def get_source(self):

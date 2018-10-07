@@ -31,19 +31,14 @@ def loss_func_binary(output, target):
     return F.binary_cross_entropy(output, target)
 
 
-def binarize(tensor):
-    return np.floor(tensor + 0.5)
-
-
 def accuracy(Y, Y_hat):
     return (Y == Y_hat).sum() / Y.size
 
 
 def binary_metrics(outputs, targets):
-    binary_outputs = binarize(outputs)
-    (tp, fn, fp, tn) = tp_fn_fp_tn(binary_outputs, targets, 0.5)
-    precision_value = precision(binary_outputs, targets, 0.5)
-    recall_value = recall(binary_outputs, targets, 0.5)
+    (tp, fn, fp, tn) = tp_fn_fp_tn(outputs, targets)
+    precision_value = precision(outputs, targets)
+    recall_value = recall(outputs, targets)
     f1_score = f_value(precision_value, recall_value)
 
     auc = roc_auc(outputs, targets)

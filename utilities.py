@@ -18,6 +18,10 @@ def get_filename(path):
     return na
 
 
+def binarize(tensor, threshold=0.5):
+    return ((tensor - threshold) > 0).astype('float')
+
+
 def allocate_experiment_id(log_dir, id_seq_filename='._exp_id_seq'):
     seq_fd_path = os.path.join(log_dir, id_seq_filename)
     if not os.path.exists(seq_fd_path):
@@ -98,34 +102,32 @@ def mean_absolute_error(output, target):
 def signal_aggregate_error(output, target):
 
     return np.abs(np.sum(output) - np.sum(target))/np.sum(target)
-    
-    
-def tp_fn_fp_tn(output, target, thres):
-    output_digt = np.zeros_like(output)
-    output_digt[np.where(output > thres)] = 1.
-    tp = np.sum(output_digt + target > 1.5)
+
+
+def tp_fn_fp_tn(output, target):
+    tp = np.sum(output + target > 1.5)
     fn = np.sum(target - output > 0.5)
-    fp = np.sum(output_digt - target > 0.5)
-    tn = np.sum(output_digt + target < 0.5)
+    fp = np.sum(output - target > 0.5)
+    tn = np.sum(output + target < 0.5)
     return tp, fn, fp, tn
-    
-    
-def precision(output, target, thres):
-    (tp, fn, fp, tn) = tp_fn_fp_tn(output, target, thres)
-    if (tp + fp) == 0: 
+
+
+def precision(output, target):
+    (tp, fn, fp, tn) = tp_fn_fp_tn(output, target)
+    if (tp + fp) == 0:
         return 0
     else:
         return float(tp) / (tp + fp)
-    
-    
-def recall(output, target, thres):
-    (tp, fn, fp, tn) = tp_fn_fp_tn(output, target, thres)
+
+
+def recall(output, target):
+    (tp, fn, fp, tn) = tp_fn_fp_tn(output, target)
     if (tp + fn) == 0:
         return 0
     else:
         return float(tp) / (tp + fn)
-    
-    
+
+
 def f_value(prec, rec):
     if (prec + rec) == 0:
         return 0
@@ -135,7 +137,7 @@ def f_value(prec, rec):
 
 def roc_auc(output, target):
     return metrics.roc_auc_score(target, output)
-    
-    
+
+
 def average_precision(output, target):
     return metrics.average_precision_score(target, output)
