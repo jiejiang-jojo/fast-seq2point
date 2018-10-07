@@ -173,7 +173,7 @@ def train(args):
     for (batch_x, batch_y) in generator.generate():
 
         if iteration > 1000*50:
-           break
+            break
 
         # Evaluate
         if iteration % 1000 == 0:
@@ -181,25 +181,21 @@ def train(args):
             train_fin_time = time.time()
 
             tr_result_dict = evaluate(model=model,
-                               generator=generator,
-                               data_type='train',
-                               max_iteration=args.validate_max_iteration,
-                               cuda=cuda,
-                               binary=args.binary_threshold is not None)
+                                      generator=generator,
+                                      data_type='train',
+                                      max_iteration=args.validate_max_iteration,
+                                      cuda=cuda,
+                                      binary=args.binary_threshold is not None)
 
             va_result_dict = evaluate(model=model,
-                               generator=generator,
-                               data_type='validate',
-                               max_iteration=args.validate_max_iteration,
-                               cuda=cuda,
-                               binary=args.binary_threshold is not None)
+                                      generator=generator,
+                                      data_type='validate',
+                                      max_iteration=args.validate_max_iteration,
+                                      cuda=cuda,
+                                      binary=args.binary_threshold is not None)
 
-            if args.binary_threshold is not None:
-                # logging.info('tr_acc: {:.4f}, va_acc: {:.4f}'.format(tr_eval, va_eval))
-                logging.info('train: {}'.format(tr_result_dict))
-            else:
-                # logging.info('tr_mae: {:.4f}, va_mae: {:.4f}'.format(tr_eval, va_eval))
-                logging.info('validate: {}'.format(va_result_dict))
+            logging.info('train: {}'.format(tr_result_dict))
+            logging.info('validate: {}'.format(va_result_dict))
 
             train_time = train_fin_time - train_bgn_time
             validate_time = time.time() - train_fin_time
