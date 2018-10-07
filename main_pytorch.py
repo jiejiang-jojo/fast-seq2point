@@ -38,6 +38,26 @@ def binarize(tensor):
 def accuracy(Y, Y_hat):
     return (Y == Y_hat).sum() / Y.size
 
+
+def binary_metrics(outputs, targets):
+    binary_outputs = binarize(outputs)
+    (tp, fn, fp, tn) = tp_fn_fp_tn(binary_outputs, targets, 0.5)
+    precision_value = precision(binary_outputs, targets, 0.5)
+    recall_value = recall(binary_outputs, targets, 0.5)
+    f1_score = f_value(precision_value, recall_value)
+
+    auc = roc_auc(outputs, targets)
+    ap = average_precision(outputs, targets)
+
+    metric_dict = {'tp': tp, 'fn': fn, 'fp': fp, 'tn': tn,
+                   'precision': '{:.4f}'.format(precision_value),
+                   'recall': '{:.4f}'.format(recall_value),
+                   'f1_score': '{:.4f}'.format(f1_score),
+                   'auc': '{:.4f}'.format(auc),
+                   'average_precision': '{:.4f}'.format(ap)}
+    return metric_dict
+
+
 def evaluate(model, generator, data_type, max_iteration, cuda, binary=False):
     """Evaluate.
     Args:
@@ -49,7 +69,7 @@ def evaluate(model, generator, data_type, max_iteration, cuda, binary=False):
     Returns:
       mae: float
     """
-    
+
     # Generate function
     generate_func = generator.generate_validate(data_type=data_type,
                                                 max_iteration=max_iteration)
@@ -60,30 +80,13 @@ def evaluate(model, generator, data_type, max_iteration, cuda, binary=False):
                                  cuda=cuda,
                                  has_target=True)
     if binary:
-        
-        (tp, fn, fp, tn) = tp_fn_fp_tn(binarize(outputs), targets, 0.5)
-        precision_value = precision(binarize(outputs), targets, 0.5)
-        recall_value = recall(binarize(outputs), targets, 0.5)
-        f1_score = f_value(precision_value, recall_value)
-        
-        auc = roc_auc(outputs, targets)
-        ap = average_precision(outputs, targets)
-        
-        result_dict = {'tp': tp, 'fn': fn, 'fp': fp, 'tn': tn, 
-                       'precision': '{:.4f}'.format(precision_value), 
-                       'recall': '{:.4f}'.format(recall_value), 
-                       'f1_score': '{:.4f}'.format(f1_score), 
-                       'auc': '{:.4f}'.format(auc), 
-                       'average_precision': '{:.4f}'.format(ap)}
-        
-        return result_dict
-    
+        return binary_metrics(outputs, targets)
     else:
         outputs = generator.inverse_transform(outputs)
         targets = generator.inverse_transform(targets)
-    
+
         mae = mean_absolute_error(outputs, targets)
-    
+
         return mae
 
 
@@ -176,7 +179,7 @@ def train(args):
 
         if iteration > 1000*50:
            break
-        
+
         # Evaluate
         if iteration % 1000 == 0:
 
@@ -298,13 +301,10 @@ def inference(args):
     outputs = forward(model=model, generate_func=generate_func, cuda=cuda, has_target=False)
     outputs = np.concatenate([output[0] for output in outputs])
     if args.binary_threshold is not None:
-        outputs = binarize(outputs)
         targets = generator.get_target()
-        acc = accuracy(outputs, targets)
-        acc_all_zeros = accuracy(outputs*0, targets)
         logging.info('Inference time: {} s'.format(time.time() - inference_time))
-        logging.info('ACC: {}'.format(acc))
-        logging.info('ACC all zero: {}'.format(acc_all_zeros))
+        metric_dict = binary_metrics(outputs, targets)
+        logging.info('Metrics: {}'.format(metric_dict))
     else:
         outputs = generator.inverse_transform(outputs)
 
