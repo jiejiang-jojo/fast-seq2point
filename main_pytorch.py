@@ -36,6 +36,7 @@ def accuracy(Y, Y_hat):
 
 
 def binary_metrics(outputs, targets):
+    outputs = binarize(outputs, args.model_threshold)
     (tp, fn, fp, tn) = tp_fn_fp_tn(outputs, targets)
     precision_value = precision(outputs, targets)
     recall_value = recall(outputs, targets)
@@ -306,9 +307,9 @@ def inference(args):
         targets = generator.get_target()
 
         valid_data = np.ones_like(source)
-        for i in range(len(source)):
-            if (source[i]==0) or (source[i] < targets[i]):
-                valid_data[i] = 0
+        #for i in range(len(source)):
+            #if (source[i]==0) or (source[i] < targets[i]):
+                #valid_data[i] = 0
 
         mae = mean_absolute_error(outputs * valid_data, targets * valid_data)
         sae = signal_aggregate_error(outputs * valid_data, targets * valid_data)
@@ -370,6 +371,7 @@ if __name__ == '__main__':
     parser_inference.add_argument('--inference-model', type=str)
     parser_inference.add_argument('--inference-house', type=str)
     parser_inference.add_argument('--binary-threshold', type=float, default=None)
+    parser_inference.add_argument('--model-threshold', type=float, default=None)
     parser_inference.add_argument('--cuda', action='store_true', default=False)
     for p in model_params:
         parser_inference.add_argument('--pm-' + p.replace('_', '-'), type=str, metavar='<{}>'.format(p))
