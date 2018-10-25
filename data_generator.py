@@ -9,8 +9,9 @@ from utilities import calculate_scalar, scale, inverse_scale, binarize
 
 class DataGenerator(object):
 
-    def __init__(self, hdf5_path, target_device, train_house_list,
-        validate_house_list, batch_size, seq_len, width, random_seed=1234, binary_threshold=None):
+    def __init__(self, hdf5_path, target_device, train_house_list, validate_house_list,
+                 batch_size, seq_len, width, random_seed=1234, binary_threshold=None,
+                 balance_threshold=None, balance_positive=0.5):
         """Data generator.
         Args:
           hdf5_path: string, path of hdf5 file.
@@ -33,6 +34,13 @@ class DataGenerator(object):
         self.validate_random_state = np.random.RandomState(1)
         self.validate_house_list = validate_house_list
         self.binary_threshold = binary_threshold
+        self.balance_threshold = balance_threshold
+        self.balance_positive = balance_positive
+
+        if self.balance_threshold is not None:
+            self.generate = self._generate_balanced
+        else:
+            self.generate = self._generate
 
         assert len(train_house_list) > 0
 
@@ -120,7 +128,50 @@ class DataGenerator(object):
 
             return aggregates, targets
 
-    def generate(self):
+    def _generate_balanced(self):
+        """Generate mini-batch data for training using balanced data.
+        """
+        batch_size = self.batch_size
+
+        indexes = np.array(self.train_indexes)
+
+        positive_size = int(self.batch_size * self.balance_positive)
+
+        target_values = self.train_y[indexes]
+        indexes_on = indexes[target_values >= self.balance_threshold]
+        indexes_off = indexes[target_values < self.balance_threshold]
+
+        i_on = len(indexes_on)  # To trigger shuffling
+        i_off = len(indexes_off)  # To trigger shuffling
+        while True:
+
+            if i_on + positive_size > len(indexes_on):
+                i_on = 0
+                self.random_state.shuffle(indexes_on)
+
+            if i_off + batch_size - positive_size > len(indexes_off):
+                i_off = 0
+                self.random_state.shuffle(indexes_off)
+
+            # Get batch indexes
+            batch_indexes = indexes_on[i_on:i_on+positive_size] + indexes_off[i_off:i_off+batch_size-positive_size]
+            batch_x_indexes_2d = batch_indexes[:, None] + np.arange(self.seq_len + self.width - 1)
+            batch_y_indexes_2d = batch_indexes[:, None] + np.arange(self.seq_len // 2, self.seq_len // 2 + self.width)
+            batch_x = self.train_x[batch_x_indexes_2d]
+            batch_y = self.train_y[batch_y_indexes_2d]
+            # Normalize input
+            batch_x = self.transform(batch_x)
+            if self.binary_threshold is not None:
+                batch_y = binarize(batch_y, self.binary_threshold)
+            else:
+                batch_y = self.transform(batch_y)
+
+            yield batch_x, batch_y
+            i_on += positive_size
+            i_off += batch_size-positive_size
+
+
+    def _generate(self):
         """Generate mini-batch data for training.
         """
 
