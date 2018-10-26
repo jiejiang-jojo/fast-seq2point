@@ -328,7 +328,10 @@ def inference(args):
 
 
 class DefaultNamespace(argparse.Namespace):
-    """ A getitem safe dict class """
+    """ When the requested attribute does not exists return None instead of throw AttributeError.
+        Ex. Namespace().abc --> throw Attribute Error
+            DefaultNamespace().abc --> return None
+    """
     def __getattr__(self, name):
         return None
 
