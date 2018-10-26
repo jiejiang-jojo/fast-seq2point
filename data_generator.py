@@ -155,7 +155,7 @@ class DataGenerator(object):
                 self.random_state.shuffle(indexes_off)
 
             # Get batch indexes
-            batch_indexes = indexes_on[i_on:i_on+positive_size] + indexes_off[i_off:i_off+batch_size-positive_size]
+            batch_indexes = np.concatenate((indexes_on[i_on:i_on+positive_size], indexes_off[i_off:i_off+batch_size-positive_size]), axis=0)
             batch_x_indexes_2d = batch_indexes[:, None] + np.arange(self.seq_len + self.width - 1)
             batch_y_indexes_2d = batch_indexes[:, None] + np.arange(self.seq_len // 2, self.seq_len // 2 + self.width)
             batch_x = self.train_x[batch_x_indexes_2d]
