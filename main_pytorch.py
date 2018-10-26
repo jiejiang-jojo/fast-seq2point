@@ -140,7 +140,9 @@ def train(args):
 
     # Model
     model_class, model_params = MODELS[args.model]
-    model = model_class(**{k: args.model_params[k] for k in model_params if k in args.model_params})
+    model = model_class(**{k: args.model_params[k]
+                           for k in model_params
+                           if k in args.model_params})
     logging.info("sequence length: {}".format(model.seq_len))
 
     if cuda:
@@ -325,13 +327,19 @@ def inference(args):
     np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'groundtruth.npy', targets)
 
 
+class DefaultNamespace(argparse.Namespace):
+    """ A getitem safe dict class """
+    def __getattr__(self, name):
+        return None
+
+
 def consolidate_args(args):
     """ Merge different source of configuration. """
     # Loading config into args
     with open(args.config) as fin:
         config = json.load(fin)
         config.update({k: v for k, v in args.__dict__.items() if v is not None})
-        args.__dict__ = config
+        args = DefaultNamespace(**config)
     # Loading commandline model parameters into model_params
     model_param_setting = {k: v for k, v in args.__dict__.items() if k.startswith('pm_')}
     if 'model_params' not in args.__dict__:
@@ -345,6 +353,7 @@ def consolidate_args(args):
                 args.model_params[k[3:]] = v
     if args.binary_threshold is not None:
         args.model_params['to_binary'] = True
+    return args
 
 
 if __name__ == '__main__':
@@ -362,6 +371,8 @@ if __name__ == '__main__':
     parser_train.add_argument('--cuda', action='store_true', default=False)
     parser_train.add_argument('--width', type=int)
     parser_train.add_argument('--binary-threshold', type=float, default=None)
+    parser_train.add_argument('--balance-threshold', type=float, default=None)
+    parser_train.add_argument('--balance-positive', type=float, default=None)
     for p in model_params:
         parser_train.add_argument('--pm-' + p.replace('_', '-'), type=str, metavar='<{}>'.format(p))
 
@@ -377,7 +388,7 @@ if __name__ == '__main__':
         parser_inference.add_argument('--pm-' + p.replace('_', '-'), type=str, metavar='<{}>'.format(p))
 
     args = parser.parse_args()
-    consolidate_args(args)
+    args = consolidate_args(args)
 
     # Write out log
     logs_dir = os.path.join(args.workspace, 'logs', get_filename(__file__))
