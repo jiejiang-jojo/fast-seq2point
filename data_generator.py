@@ -131,6 +131,7 @@ class DataGenerator(object):
     def _generate_balanced(self):
         """Generate mini-batch data for training using balanced data.
         """
+        logging.info('----balance generation----')
         batch_size = self.batch_size
 
         indexes = np.array(self.train_indexes)
@@ -174,6 +175,7 @@ class DataGenerator(object):
     def _generate(self):
         """Generate mini-batch data for training.
         """
+        logging.info('----no balance generation----')
 
         batch_size = self.batch_size
 

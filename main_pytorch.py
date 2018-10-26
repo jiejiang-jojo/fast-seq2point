@@ -163,7 +163,9 @@ def train(args):
                               batch_size=args.batch_size,
                               seq_len=model.seq_len,
                               width=args.width,
-                              binary_threshold=args.binary_threshold)
+                              binary_threshold=args.binary_threshold,
+                              balance_threshold=args.balance_threshold,
+                              balance_positive=args.balance_positive)
 
     # Optimizer
     learning_rate = 1e-3
