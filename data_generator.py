@@ -65,8 +65,8 @@ class DataGenerator(object):
         (self.mean, self.std, self.max) = calculate_scalar(self.train_x)
         (self.meany, self.stdy, self.maxy) = calculate_scalar(self.train_y)
 
-        print('mean, std, max: ', self.mean, self.std, self.max)
-        logging.info('mean {}, std {}, max{}:'.format(self.meany, self.stdy, self.maxy))
+        logging.info('mean: {}, std: {}, max: {}'.format(self.mean, self.std, self.max))
+        logging.info('mean_y: {}, std_y: {}, max_y: {}:'.format(self.meany, self.stdy, self.maxy))
 
         # Training indexes
         self.train_indexes = np.arange(
@@ -99,7 +99,7 @@ class DataGenerator(object):
                 full_indexes[max(i - self.seq_len // 2, 0):min(i + self.seq_len // 2, length)] = -1
 
         valid_indexes = np.array([j for j in indexes if (full_indexes[j]!=-1)])
-        print('propotion of valid indexes: ', 1.0*len(valid_indexes)/(np.finfo(float).eps+len(indexes)))
+        logging.info('propotion of valid indexes: {}'.format(1.0*len(valid_indexes)/(np.finfo(float).eps+len(indexes))))
 
         return valid_indexes
 

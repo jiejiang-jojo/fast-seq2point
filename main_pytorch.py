@@ -253,7 +253,7 @@ def train(args):
             create_folder(os.path.dirname(save_out_path))
             torch.save(save_out_dict, save_out_path)
 
-            print('Save model to {}'.format(save_out_path))
+            logging.info('Save model to {}'.format(save_out_path))
 
         iteration += 1
 
