@@ -62,11 +62,11 @@ class DataGenerator(object):
         logging.info("Load data time: {} s".format(time.time() - load_time))
 
         # Calculate scalar
-        (self.mean, self.std, self.max) = calculate_scalar(self.train_x)
-        (self.meany, self.stdy, self.maxy) = calculate_scalar(self.train_y)
+        (self.mean_x, self.std_x, self.max_x) = calculate_scalar(self.train_x)
+        (self.mean_y, self.std_y, self.max_y) = calculate_scalar(self.train_y)
 
-        logging.info('mean: {}, std: {}, max: {}'.format(self.mean, self.std, self.max))
-        logging.info('mean_y: {}, std_y: {}, max_y: {}:'.format(self.meany, self.stdy, self.maxy))
+        logging.info('mean_x: {}, std_x: {}, max_x: {}'.format(self.mean_x, self.std_x, self.max_x))
+        logging.info('mean_y: {}, std_y: {}, max_y: {}:'.format(self.mean_y, self.std_y, self.max_y))
 
         # Training indexes
         self.train_indexes = np.arange(
@@ -269,10 +269,10 @@ class DataGenerator(object):
 
 
     def transform(self, x):
-        return scale(x, self.mean, self.std)
+        return scale(x, self.mean_x, self.std_x)
 
     def inverse_transform(self, x):
-        return inverse_scale(x, self.mean, self.std)
+        return inverse_scale(x, self.mean_x, self.std_x)
 
 
 
@@ -341,4 +341,4 @@ class TestDataGenerator(DataGenerator):
         return self.source
 
     def inverse_transform(self, x):
-        return inverse_scale(x, self.mean, self.std)
+        return inverse_scale(x, self.mean_x, self.std_x)

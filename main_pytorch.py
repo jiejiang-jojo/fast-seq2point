@@ -318,12 +318,10 @@ def inference(args):
         mae = mean_absolute_error(outputs * valid_data, targets * valid_data)
         sae = signal_aggregate_error(outputs * valid_data, targets * valid_data)
         mae_allzero = mean_absolute_error(outputs*0, targets * valid_data)
-        sae_allmean = signal_aggregate_error(outputs*0+18.278, targets * valid_data)
+        sae_allmean = signal_aggregate_error(outputs*0+generator.mean_y, targets * valid_data)
 
-        logging.info('MAE: {}'.format(mae))
-        logging.info('MAE all zero: {}'.format(mae_allzero))
-        logging.info('SAE: {}'.format(sae))
-        logging.info('SAE all mean: {}'.format(sae_allmean))
+        metric_dict = dict({'MAE': mae, 'MAE_zero': mae_allzero, 'SAE': sae, 'SAE_mean': sae_allmean}, **binary_metrics(((outputs - args.balance_threshold) > 0).astype('float'), ((targets - args.balance_threshold) > 0).astype('float')))
+        logging.info('Metrics: {}'.format(metric_dict))
 
     np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'prediction.npy', outputs)
     np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'groundtruth.npy', targets)
