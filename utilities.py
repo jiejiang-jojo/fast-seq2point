@@ -32,7 +32,7 @@ def allocate_experiment_id(log_dir, id_seq_filename='._exp_id_seq'):
         retries = 10
         while not has_lock and retries > 0:
             try:
-                fcntl.flock(seq_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.lockf(seq_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 has_lock = True
             except OSError:
                 retries -= 1
