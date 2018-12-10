@@ -272,6 +272,37 @@ class DilatedResidualBlock(nn.Module):
         skip = data.narrow(-2, self.residual_channels, self.skip_channels)
         res = res + data_in
         return res, skip
+        
+        
+class DilatedResidualBlock2(nn.Module):
+    def __init__(self, residual_channels, dilation_channels, skip_channels, kernel_size, dilation, bias):
+        super(DilatedResidualBlock2, self).__init__()
+        self.residual_channels = residual_channels
+        self.dilation_channels = dilation_channels
+        self.skip_channels = skip_channels
+        self.dilated_conv_tanh = nn.Conv1d(residual_channels, dilation_channels, kernel_size=kernel_size, dilation=dilation, padding=dilation, bias=bias)
+        self.dilated_conv_sigmoid = nn.Conv1d(residual_channels, dilation_channels, kernel_size=kernel_size, dilation=dilation, padding=dilation, bias=bias)
+        self.res = nn.Conv1d(dilation_channels, residual_channels, kernel_size=1, bias=True)
+        self.skip = nn.Conv1d(dilation_channels, skip_channels, kernel_size=1, bias=True)
+        
+        self.init_weights()
+
+    def init_weights(self):
+        init_layer(self.dilated_conv_tanh)
+        init_layer(self.dilated_conv_sigmoid)
+        init_layer(self.res)
+        init_layer(self.skip)
+
+    def forward(self, data_in):
+
+        out1 = self.dilated_conv_tanh(data_in)
+        out2 = self.dilated_conv_sigmoid(data_in)
+        tanh_out = torch.tanh(out1)
+        sigm_out = torch.sigmoid(out2)
+        data = F.mul(tanh_out, sigm_out)
+        res = self.res(data)
+        skip = self.skip(data) + data_in
+        return res, skip
 
 
 class WaveNet(nn.Module):
