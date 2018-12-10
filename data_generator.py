@@ -38,8 +38,10 @@ class DataGenerator(object):
         self.balance_positive = balance_positive
 
         if self.balance_threshold is not None:
+            logging.info('----balance threshold is not none and use balance generation----')
             self.generate = self._generate_balanced
         else:
+            logging.info('----balance threshold is none and normal generation is used----')
             self.generate = self._generate
 
         assert len(train_house_list) > 0

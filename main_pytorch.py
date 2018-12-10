@@ -76,8 +76,10 @@ def evaluate(model, generator, data_type, max_iteration, cuda, binary=False):
                                  cuda=cuda,
                                  has_target=True)
     if binary:
+        logging.info('----binary is true and return binary metrics----')
         return binary_metrics(outputs, targets)
     else:
+        logging.info('----binary is false and only mae is returned----')
         outputs = generator.inverse_transform(outputs)
         targets = generator.inverse_transform(targets)
 
@@ -297,11 +299,13 @@ def inference(args):
     outputs = forward(model=model, generate_func=generate_func, cuda=cuda, has_target=False)
     outputs = np.concatenate([output[0] for output in outputs])
     if args.binary_threshold is not None:
+        logging.info('----binary threshold is not none and binary metrics are returned----')
         targets = generator.get_target()
         logging.info('Inference time: {} s'.format(time.time() - inference_time))
         metric_dict = binary_metrics(outputs, targets)
         logging.info('Metrics: {}'.format(metric_dict))
     else:
+        logging.info('----binary threshold is none and mae and sae metrics are returned----')
         outputs = generator.inverse_transform(outputs)
 
         logging.info('Inference time: {} s'.format(time.time() - inference_time))
@@ -311,16 +315,16 @@ def inference(args):
         targets = generator.get_target()
 
         valid_data = np.ones_like(source)
-        #for i in range(len(source)):
-            #if (source[i]==0) or (source[i] < targets[i]):
-                #valid_data[i] = 0
+        for i in range(len(source)):
+            if (source[i]==0) or (source[i] < targets[i]):
+                valid_data[i] = 0
 
         mae = mean_absolute_error(outputs * valid_data, targets * valid_data)
         sae = signal_aggregate_error(outputs * valid_data, targets * valid_data)
         mae_allzero = mean_absolute_error(outputs*0, targets * valid_data)
         sae_allmean = signal_aggregate_error(outputs*0+generator.mean_y, targets * valid_data)
 
-        metric_dict = dict({'MAE': mae, 'MAE_zero': mae_allzero, 'SAE': sae, 'SAE_mean': sae_allmean}, **binary_metrics(((outputs - args.balance_threshold) > 0).astype('float'), ((targets - args.balance_threshold) > 0).astype('float')))
+        metric_dict = dict({'MAE': mae, 'MAE_zero': mae_allzero, 'SAE': sae, 'SAE_mean': sae_allmean}, **binary_metrics(((outputs - args.eval_binary_threshold) > 0).astype('float'), ((targets - args.eval_binary_threshold) > 0).astype('float')))
         logging.info('Metrics: {}'.format(metric_dict))
 
     np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'prediction.npy', outputs)
@@ -385,6 +389,7 @@ if __name__ == '__main__':
     parser_inference.add_argument('--inference-model', type=str)
     parser_inference.add_argument('--inference-house', type=str)
     parser_inference.add_argument('--binary-threshold', type=float, default=None)
+    parser_inference.add_argument('--eval-binary-threshold', type=float, default=None)
     parser_inference.add_argument('--model-threshold', type=float, default=None)
     parser_inference.add_argument('--cuda', action='store_true', default=False)
     for p in model_params:

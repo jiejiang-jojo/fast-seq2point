@@ -276,7 +276,7 @@ class DilatedResidualBlock(nn.Module):
 
 class WaveNet(nn.Module):
 
-    def __init__(self, layers=6, kernel_size=3, residual_channels=32, dilation_channels=32, skip_channels=32, to_binary=False):
+    def __init__(self, layers=6, kernel_size=3, residual_channels=32, dilation_channels=32, skip_channels=128, to_binary=False):
         super(WaveNet, self).__init__()
         assert kernel_size % 2 == 1, f'kernel_size ({kernel_size}) must be odd'
         self.kernel_size = kernel_size # has to be odd integer, since even integer may break dilated conv output size
