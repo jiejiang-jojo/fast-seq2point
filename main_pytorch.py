@@ -140,11 +140,17 @@ def train(args):
     workspace = args.workspace
     cuda = args.cuda
 
-    # Model
+    # Load model
     model_class, model_params = MODELS[args.model]
-    model = model_class(**{k: args.model_params[k]
-                           for k in model_params
-                           if k in args.model_params})
+    model = model_class(**{k: args.model_params[k] for k in model_params if k in args.model_params})
+
+    if args.train_model is not None:
+        logging.info("continue training ...")
+        model_path = os.path.join(workspace, 'logs', get_filename(__file__),
+                                  args.train_model)
+        checkpoint = torch.load(model_path)
+        model.load_state_dict(checkpoint['state_dict'])
+
     logging.info("sequence length: {}".format(model.seq_len))
 
     if cuda:
@@ -170,7 +176,7 @@ def train(args):
                               balance_positive=args.balance_positive)
 
     # Optimizer
-    learning_rate = 1e-3
+    learning_rate = 1e-3   # 4.7101286972462485e-05
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, betas=(0.9, 0.999),
                            eps=1e-08, weight_decay=0.)
 
@@ -179,7 +185,7 @@ def train(args):
 
     for (batch_x, batch_y) in generator.generate():
 
-        if iteration > 1000*50:
+        if iteration > 1000*100:
             break
 
         # Evaluate
@@ -241,7 +247,7 @@ def train(args):
         optimizer.step()
 
         # Save model
-        if (iteration>1) and (iteration % 10000 == 0):
+        if (iteration>1) and (iteration % 1000 == 0):
             save_out_dict = {'iteration': iteration,
                              'state_dict': model.state_dict(),
                              'optimizer': optimizer.state_dict()}
@@ -249,7 +255,7 @@ def train(args):
             save_out_path = args.basename + '_{}_{}_iter_{}_wd_{}_sl_{}.tar'.format(
                 args.target_device,
                 args.model,
-                iteration,
+                iteration+0,
                 args.width,
                 model.seq_len
             )
@@ -327,8 +333,9 @@ def inference(args):
         metric_dict = dict({'MAE': mae, 'MAE_zero': mae_allzero, 'SAE': sae, 'SAE_mean': sae_allmean}, **binary_metrics(((outputs - args.eval_binary_threshold) > 0).astype('float'), ((targets - args.eval_binary_threshold) > 0).astype('float')))
         logging.info('Metrics: {}'.format(metric_dict))
 
-    np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'prediction.npy', outputs)
-    np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'groundtruth.npy', targets)
+    #np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'prediction.npy', outputs)
+    #np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'groundtruth.npy', targets)
+    #np.save(workspace+'/outputs/'+args.inference_model+'_'+args.inference_house+'_'+'source.npy', source)
 
 
 class DefaultNamespace(argparse.Namespace):
@@ -380,6 +387,7 @@ if __name__ == '__main__':
     parser_train.add_argument('--binary-threshold', type=float, default=None)
     parser_train.add_argument('--balance-threshold', type=float, default=None)
     parser_train.add_argument('--balance-positive', type=float, default=None)
+    parser_train.add_argument('--train-model', type=str, default=None)
     for p in model_params:
         parser_train.add_argument('--pm-' + p.replace('_', '-'), type=str, metavar='<{}>'.format(p))
 

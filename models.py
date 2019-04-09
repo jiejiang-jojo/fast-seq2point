@@ -1,3 +1,4 @@
+import logging
 import sys
 import math
 import inspect
@@ -26,9 +27,19 @@ def move_data_to_gpu(x, cuda):
 
     return x
 
+def init_layer_2(layer):
+    """Initialize a Linear or Convolutional layer. """
+
+    #nn.init.xavier_uniform_(layer.weight)
+    layer.weight.data.uniform_(-0.1, 0.1)
+
+    if layer.bias is not None:
+        layer.bias.data.fill_(0.)
 
 def init_layer(layer):
     """Initialize a Linear or Convolutional layer. """
+
+    #nn.init.xavier_uniform_(layer.weight)
 
     if layer.weight.ndimension() == 4:
         (n_out, n_in, height, width) = layer.weight.size()
@@ -202,16 +213,22 @@ class Seq2Point(nn.Module):
         self.to_binary = to_binary
         assert seq_len >= 10, f'seq_len ({seq_len}) must be at least 10'
 
+        self.drop_layer = nn.Dropout(p=0.5)
         self.pad1 = nn.ReplicationPad2d((0, 0, 4, 5))
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=30, kernel_size=(10, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv1_bn = nn.BatchNorm2d(30)
         self.pad2 = nn.ReplicationPad2d((0, 0, 3, 4))
         self.conv2 = nn.Conv2d(in_channels=30, out_channels=30, kernel_size=(8, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv2_bn = nn.BatchNorm2d(30)
         self.pad3 = nn.ReplicationPad2d((0, 0, 2, 3))
         self.conv3 = nn.Conv2d(in_channels=30, out_channels=40, kernel_size=(6, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv3_bn = nn.BatchNorm2d(40)
         self.pad4 = nn.ReplicationPad2d((0, 0, 2, 2))
         self.conv4 = nn.Conv2d(in_channels=40, out_channels=50, kernel_size=(5, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv4_bn = nn.BatchNorm2d(50)
         self.pad5 = nn.ReplicationPad2d((0, 0, 2, 2))
         self.conv5 = nn.Conv2d(in_channels=50, out_channels=50, kernel_size=(5, 1), stride=(1, 1), padding=(0, 0), bias=True)
+        self.conv5_bn = nn.BatchNorm2d(50)
 
         self.conv_final = nn.Conv2d(in_channels=50, out_channels=1, kernel_size=(seq_len, 1), stride=(1, 1), padding=(0, 0), bias=True)
 
@@ -231,11 +248,16 @@ class Seq2Point(nn.Module):
         x = input
         x = x.view(x.shape[0], 1, x.shape[1], 1)
 
-        x = F.relu(self.conv1(self.pad1(x)))
-        x = F.relu(self.conv2(self.pad2(x)))
-        x = F.relu(self.conv3(self.pad3(x)))
-        x = F.relu(self.conv4(self.pad4(x)))
-        x = F.relu(self.conv5(self.pad5(x)))
+        x = F.relu(self.conv1_bn(self.conv1(self.pad1(x))))
+        #x = self.drop_layer(x)
+        x = F.relu(self.conv2_bn(self.conv2(self.pad2(x))))
+        #x = self.drop_layer(x)
+        x = F.relu(self.conv3_bn(self.conv3(self.pad3(x))))
+        #x = self.drop_layer(x)
+        x = F.relu(self.conv4_bn(self.conv4(self.pad4(x))))
+        #x = self.drop_layer(x)
+        x = F.relu(self.conv5_bn(self.conv5(self.pad5(x))))
+        #x = self.drop_layer(x)
 
         x = self.conv_final(x)
         x = x.view(x.shape[0], x.shape[2])
@@ -266,7 +288,7 @@ class DilatedResidualBlock(nn.Module):
         out2 = out.narrow(-2, self.dilation_channels, self.dilation_channels)
         tanh_out = torch.tanh(out1)
         sigm_out = torch.sigmoid(out2)
-        data = F.mul(tanh_out, sigm_out)
+        data = torch.mul(tanh_out, sigm_out)
         data = self.mixing_conv(data)
         res = data.narrow(-2, 0, self.residual_channels)
         skip = data.narrow(-2, self.residual_channels, self.skip_channels)
@@ -300,8 +322,8 @@ class DilatedResidualBlock2(nn.Module):
         tanh_out = torch.tanh(out1)
         sigm_out = torch.sigmoid(out2)
         data = F.mul(tanh_out, sigm_out)
-        res = self.res(data)
-        skip = self.skip(data) + data_in
+        skip = self.skip(data)
+        res = self.res(data) + data_in
         return res, skip
 
 
@@ -318,7 +340,7 @@ class WaveNet(nn.Module):
         self.dilation_channels = dilation_channels
         self.skip_channels = skip_channels
 
-        self.causal_conv = nn.Conv1d(1, residual_channels, kernel_size=1, bias=False)
+        self.causal_conv = nn.Conv1d(1, residual_channels, kernel_size=1, bias=True)
         self.blocks = [DilatedResidualBlock(residual_channels, dilation_channels, skip_channels, kernel_size, 2**i, True)
                        for i in range(layers)]
         for i, block in enumerate(self.blocks):
@@ -344,7 +366,7 @@ class WaveNet(nn.Module):
             skip_out = skip_out + skip_other
         data_out = F.relu(skip_out)
         data_out = self.penultimate_conv(data_out)
-        data_out = F.relu(data_out)
+        #data_out = F.relu(data_out)
         data_out = self.final_conv(data_out)
         data_out = data_out.narrow(-1, self.seq_len//2, data_out.size()[-1]-self.seq_len+1)
         data_out = data_out.view(data_out.shape[0], data_out.shape[2])
