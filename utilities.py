@@ -4,6 +4,8 @@ import logging
 import fcntl
 from sklearn import metrics
 from time import sleep
+from datetime import datetime
+import platform
 
 
 def create_folder(fd):
@@ -44,15 +46,19 @@ def allocate_experiment_id(log_dir, id_seq_filename='._exp_id_seq'):
         seq_fd.write(str(new_id + 1))
         seq_fd.truncate()
         fcntl.flock(seq_fd, fcntl.LOCK_UN)
-    return new_id
+    return "%04d" % new_id
+
+
+def allocate_experiment_id_alt(log_dir):
+    return datetime.now().strftime('%Y%m%d_%H%M%S-{}-{}').format(platform.node(), os.getpid())
 
 
 def create_logging(log_dir, filemode):
 
     create_folder(log_dir)
-    exp_id = allocate_experiment_id(log_dir)
+    exp_id = allocate_experiment_id_alt(log_dir)
 
-    log_path = os.path.join(log_dir, "%04d.log" % exp_id)
+    log_path = os.path.join(log_dir, "%s.log" % exp_id)
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                         datefmt='%a, %d %b %Y %H:%M:%S',
