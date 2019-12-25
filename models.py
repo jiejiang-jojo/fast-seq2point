@@ -600,6 +600,76 @@ class WaveNetBGRU_speedup(nn.Module):
         # return data_out.view(data_out.shape[0], data_out.shape[2])
 
 
+
+class LSTM(nn.Module):
+
+    def __init__(self, seq_len=511, to_binary=False):
+
+        super(LSTM, self).__init__()
+
+        self.seq_len = seq_len
+
+        self.to_binary = to_binary
+
+        self.conv = nn.Conv1d(1, 16, kernel_size=4, bias=True)
+
+        self.lstm1 = nn.LSTM(input_size=16, hidden_size=128, num_layers=1, bias=True, batch_first=True, dropout=0., bidirectional=True)
+
+        self.lstm2 = nn.LSTM(input_size=128*2, hidden_size=256, num_layers=1, bias=True, batch_first=True, dropout=0., bidirectional=True)
+
+        self.fc_linear = nn.Linear(256*2, 128)
+
+        self.fc_activation = nn.Tanh()
+
+        self.fc_final = nn.Linear(128, 1)
+
+        self.init_weights()
+
+
+    def init_weights(self):
+
+        init_layer(self.conv)
+
+        init_layer(self.fc_linear)
+
+        init_layer(self.fc_final)
+
+    def forward(self, input):
+
+        x = input
+        x = x.view(x.shape[0], 1, x.shape[1])
+        '''(batch_size, time_steps, 1)'''
+
+        x = self.conv(x)
+
+        m = nn.ConstantPad1d((0, 3), 0)
+
+        x = m(x)
+
+        x = x.view(x.shape[0], x.shape[2], x.shape[1])
+
+        #logging.info('x shape: ', x.shape)
+
+        x, (_, _) = self.lstm1(x)
+        '''x: (batch_size, time_steps, feature_maps)'''
+
+        x, (_, _) = self.lstm2(x)
+
+        x = self.fc_linear(x)
+
+        x = self.fc_activation(x)
+
+        x = self.fc_final(x)
+        '''(batch_size, time_steps, 1)'''
+
+        output = x.view(x.shape[0 : 2])
+        '''(batch_size, time_steps)'''
+
+        if self.to_binary:
+            return torch.sigmoid(output)
+
+        return output
+
 MODELS = {cname: (cls, inspect.getfullargspec(cls.__init__).args[1:])
           for cname, cls in inspect.getmembers(sys.modules[__name__], inspect.isclass)
           if issubclass(cls, nn.Module)}
