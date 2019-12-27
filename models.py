@@ -375,8 +375,67 @@ class WaveNet(nn.Module):
         return data_out
 
 
-
 class BGRU(nn.Module):
+
+    def __init__(self, seq_len=511, to_binary=False):
+
+        super(BGRU, self).__init__()
+
+        self.seq_len = seq_len
+
+        self.to_binary = to_binary
+
+        self.bgru = nn.GRU(input_size=1, hidden_size=64, num_layers=3, bias=True, batch_first=True, dropout=0., bidirectional=True)
+
+        self.fc_final = nn.Linear(128, 1)
+
+        self.init_weights()
+
+    def _init_param(self, param):
+
+        if param.ndimension() == 1:
+            param.data.fill_(0.)
+
+        elif param.ndimension() == 2:
+            n = param.size(-1)
+            std = math.sqrt(2. / n)
+            scale = std * math.sqrt(3.)
+            param.data.uniform_(-scale, scale)
+
+    def init_weights(self):
+
+        for param in self.bgru.parameters():
+            self._init_param(param)
+
+        init_layer(self.fc_final)
+
+    def forward(self, input):
+
+        x = input
+        x = x.view(x.shape[0], x.shape[1], 1)
+        '''(batch_size, time_steps, 1)'''
+
+        (x, h) = self.bgru(x)
+        '''x: (batch_size, time_steps, feature_maps)'''
+
+        x = self.fc_final(x)
+        '''(batch_size, time_steps, 1)'''
+
+        output = x.view(x.shape[0 : 2])
+        '''(batch_size, time_steps)'''
+
+        # seq_len = self.seq_len
+        # width = x.shape[1] - seq_len + 1
+        # output = x[:, seq_len // 2 : seq_len // 2 + width]
+        '''(batch_size, width)'''
+
+        if self.to_binary:
+            return torch.sigmoid(output)
+
+        return output
+
+
+class BGRU_this_paper(nn.Module):
 
     def __init__(self, seq_len=511, to_binary=False):
 
@@ -646,7 +705,7 @@ class LSTM(nn.Module):
 
         x = m(x)
 
-        x = x.view(x.shape[0], x.shape[2], x.shape[1])
+        x = x.permute(0, 2, 1)
 
         #logging.info('x shape: ', x.shape)
 
