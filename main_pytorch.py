@@ -19,6 +19,7 @@ from models import *
 
 def loss_func(output, target):
 
+    #logging.info('output shapes: {} and target shapes: {} '.format(output.shape, target.shape))
     assert output.shape == target.shape
 
     return torch.mean(torch.abs(output - target))
@@ -176,7 +177,7 @@ def train(args):
                               balance_positive=args.balance_positive)
 
     # Optimizer
-    learning_rate = 1e-3   # 4.7101286972462485e-05
+    learning_rate = 1e-3
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, betas=(0.9, 0.999),
                            eps=1e-08, weight_decay=0.)
 
@@ -185,7 +186,7 @@ def train(args):
 
     for (batch_x, batch_y) in generator.generate():
 
-        if iteration > 1000*100:
+        if iteration > 1000*300:
             break
 
         # Evaluate
@@ -214,8 +215,8 @@ def train(args):
             validate_time = time.time() - train_fin_time
 
             logging.info(
-                'iteration: {}, train time: {:.3f} s, validate time: {:.3f} s'.format(
-                    iteration, train_time, validate_time))
+                'iteration: {}, train time: {:.3f} s, validate time: {:.3f} s, learning rate: {}'.format(
+                    iteration, train_time, validate_time, learning_rate))
 
             logging.info('------------------------------------')
 
@@ -244,10 +245,12 @@ def train(args):
         # Backward
         optimizer.zero_grad()
         loss.backward()
+        if args.max_norm is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=args.max_norm)
         optimizer.step()
 
         # Save model
-        if (iteration>1) and (iteration % 1000 == 0):
+        if (iteration>1) and (iteration % 1000 == 0) and ((iteration//1000+4) // (((iteration//1000-1)//100+1)*100) == 1):
             save_out_dict = {'iteration': iteration,
                              'state_dict': model.state_dict(),
                              'optimizer': optimizer.state_dict()}
@@ -255,7 +258,7 @@ def train(args):
             save_out_path = args.basename + '_{}_{}_iter_{}_wd_{}_sl_{}.tar'.format(
                 args.target_device,
                 args.model,
-                iteration+0,
+                iteration,
                 args.width,
                 model.seq_len
             )
@@ -407,7 +410,10 @@ if __name__ == '__main__':
     args = consolidate_args(args)
 
     # Write out log
-    logs_dir = os.path.join(args.workspace, 'logs', get_filename(__file__))
+    if args.mode == 'inference':
+        logs_dir = os.path.join(args.workspace, 'logs', get_filename(__file__), 'inference_logs')
+    else:
+        logs_dir = os.path.join(args.workspace, 'logs', get_filename(__file__))
     logging = create_logging(logs_dir, filemode='w')
     logging.info(args)
 

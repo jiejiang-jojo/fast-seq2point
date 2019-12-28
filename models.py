@@ -375,7 +375,7 @@ class WaveNet(nn.Module):
         return data_out
 
 
-class BGRU(nn.Module):
+class BGRU_s2s(nn.Module):
 
     def __init__(self, seq_len=511, to_binary=False):
 
@@ -435,7 +435,7 @@ class BGRU(nn.Module):
         return output
 
 
-class BGRU_this_paper(nn.Module):
+class BGRU(nn.Module):
 
     def __init__(self, seq_len=511, to_binary=False):
 
