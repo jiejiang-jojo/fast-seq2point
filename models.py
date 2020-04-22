@@ -699,6 +699,8 @@ class LSTM(nn.Module):
         x = x.view(x.shape[0], 1, x.shape[1])
         '''(batch_size, time_steps, 1)'''
 
+        #logging.info('x shape: ', x.shape)
+
         x = self.conv(x)
 
         m = nn.ConstantPad1d((0, 3), 0)
@@ -721,8 +723,13 @@ class LSTM(nn.Module):
         x = self.fc_final(x)
         '''(batch_size, time_steps, 1)'''
 
-        output = x.view(x.shape[0 : 2])
+        x = x.view(x.shape[0 : 2])
         '''(batch_size, time_steps)'''
+
+        seq_len = self.seq_len
+        width = x.shape[1] - seq_len + 1
+        output = x[:, seq_len // 2 : seq_len // 2 + width]
+        '''(batch_size, width)'''
 
         if self.to_binary:
             return torch.sigmoid(output)
